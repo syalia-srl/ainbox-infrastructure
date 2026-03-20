@@ -1,7 +1,4 @@
-# ==============================================================================
-# Dockerfile: SuperBot AI Engine
 # Stage 1: Build environment with CUDA support
-# ==============================================================================
 FROM nvidia/cuda:12.2.2-devel-ubuntu22.04 AS builder
 
 ENV DEBIAN_FRONTEND=noninteractive
@@ -21,14 +18,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 # 2. Python Package Manager (uv)
-# Fixed: Explicitly setting the PATH for all subsequent layers
 RUN curl -LsSf https://astral.sh/uv/install.sh | sh
+# Defining ENV PATH ensures it is available for all subsequent layers
 ENV PATH="/root/.cargo/bin:${PATH}"
 
 WORKDIR /app
 
 # 3. Compile Llama.cpp (Static Layer)
-# Resolved: Linker paths for CUDA stubs to avoid 'undefined reference' on VPS
 RUN git clone https://github.com/ggerganov/llama.cpp.git && \
     cd llama.cpp && \
     mkdir build && cd build && \
@@ -40,12 +36,11 @@ RUN git clone https://github.com/ggerganov/llama.cpp.git && \
     cd /app && rm -rf llama.cpp
 
 # 4. Application Dependencies
-# Fixed: 'uv' is now available in the PATH defined in Section 2
 COPY pyproject.toml .
-RUN uv pip install --system .
+# Fix: Using the absolute path to ensure the binary is found
+RUN /root/.cargo/bin/uv pip install --system .
 
 # 5. Model Vault (Heavy Layer)
-# The recipe.json is injected by build.sh into the build directory
 COPY recipe.json /tmp/recipe.json
 
 RUN mkdir -p /models && \
@@ -59,7 +54,6 @@ RUN mkdir -p /models && \
         fi; \
     done
 
-# Pre-loading Whisper models for offline use
 RUN WHISPER_MODEL=$(jq -r '.whisper_node.model' /tmp/recipe.json) && \
     if [ -n "$WHISPER_MODEL" ] && [ "$WHISPER_MODEL" != "null" ]; then \
         echo "[BUILD] Baking Whisper model: $WHISPER_MODEL..."; \
