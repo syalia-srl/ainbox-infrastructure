@@ -17,14 +17,17 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
-# 2. Python Package Manager (uv)
-RUN curl -LsSf https://astral.sh/uv/install.sh | sh
-# Defining ENV PATH ensures it is available for all subsequent layers
-ENV PATH="/root/.cargo/bin:${PATH}"
+# 2. Python Package Manager (uv) - Global Installation
+# We install uv directly to /usr/local/bin to avoid PATH and .cargo issues
+ADD https://astral.sh/uv/install.sh /tmp/install_uv.sh
+RUN chmod +x /tmp/install_uv.sh && \
+    sh /tmp/install_uv.sh --install-dir /usr/local/bin && \
+    rm /tmp/install_uv.sh
 
 WORKDIR /app
 
 # 3. Compile Llama.cpp (Static Layer)
+# Linker paths for CUDA stubs to avoid 'undefined reference' on VPS
 RUN git clone https://github.com/ggerganov/llama.cpp.git && \
     cd llama.cpp && \
     mkdir build && cd build && \
@@ -37,8 +40,8 @@ RUN git clone https://github.com/ggerganov/llama.cpp.git && \
 
 # 4. Application Dependencies
 COPY pyproject.toml .
-# Fix: Using the absolute path to ensure the binary is found
-RUN /root/.cargo/bin/uv pip install --system .
+# Now 'uv' is guaranteed to be in /usr/local/bin/uv
+RUN uv pip install --system .
 
 # 5. Model Vault (Heavy Layer)
 COPY recipe.json /tmp/recipe.json
