@@ -1,0 +1,18 @@
+[project]
+name = "superbot-ai-engine"
+version = "1.0.0"
+description = "Motor de inferencia local para el sistema (LLMs + STT)"
+readme = "../README.md"
+requires-python = ">=3.10"
+
+
+dependencies = [
+    "fastapi>=0.110.0",
+    "uvicorn>=0.29.0",
+    "faster-whisper>=1.0.1",
+    "python-multipart>=0.0.9", 
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
