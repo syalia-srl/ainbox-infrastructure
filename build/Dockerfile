@@ -46,7 +46,7 @@ RUN mkdir -p /models && \
             filename=$(basename "$url" | cut -d'?' -f1); \
             if [ ! -f "/models/$filename" ]; then \
                 echo "[BUILD] Baking GGUF model: $filename..."; \
-                curl -L "$url" -o "/models/$filename" --retry 5 --retry-delay 2 -C -; \
+                curl -L -f "$url" -o "/models/$filename" --retry 5 --retry-delay 2 -C -; \
             fi; \
         fi; \
     done

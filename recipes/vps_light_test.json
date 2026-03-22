@@ -11,7 +11,7 @@
   },
   "llama_node": [
     {
-      "url": "https://huggingface.co/nomic-ai/nomic-embed-vision-v1.5-GGUF/resolve/main/nomic-embed-vision-v1.5.f16.gguf?download=true",
+      "url": "https://huggingface.co/nomic-ai/nomic-embed-text-v1.5-GGUF/resolve/main/nomic-embed-text-v1.5.f16.gguf?download=true",
       "n_ctx": 2048,
       "n_gpu_layers": 0,
       "alias": "vision_embed"
