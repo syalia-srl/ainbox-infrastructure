@@ -2,7 +2,7 @@
 name = "superbot-ai-engine"
 version = "1.0.0"
 description = "Motor de inferencia local para el sistema (LLMs + STT)"
-readme = "../README.md"
+# readme = "../README.md"
 requires-python = ">=3.10"
 
 
