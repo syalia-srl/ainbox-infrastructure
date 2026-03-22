@@ -16,7 +16,7 @@ RUN chmod +x /tmp/install_uv.sh && \
 
 WORKDIR /app
 
-# 3. Compile Llama.cpp (ESTA CAPA NO SE TOCA)
+# 3. Compile Llama.cpp (ACTUALIZADO PARA LIBRERÍAS DINÁMICAS)
 RUN git clone https://github.com/ggerganov/llama.cpp.git && \
     cd llama.cpp && \
     mkdir build && cd build && \
@@ -24,6 +24,7 @@ RUN git clone https://github.com/ggerganov/llama.cpp.git && \
              -DCMAKE_LIBRARY_PATH=/usr/local/cuda/lib64/stubs \
              -DCMAKE_EXE_LINKER_FLAGS="-Wl,--allow-shlib-undefined" && \
     cmake --build . --config Release -j$(nproc) --target llama-server && \
+    find . -type f -name "lib*.so*" -exec cp {} /usr/lib/ \; && \
     cp bin/llama-server /app/ && \
     cd /app && rm -rf llama.cpp 
 
