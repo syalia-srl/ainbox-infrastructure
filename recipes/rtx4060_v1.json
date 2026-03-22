@@ -11,13 +11,13 @@
   },
   "llama_node": [
     {
-      "url": "https://huggingface.co/unsloth/Qwen3.5-9B-GGUF/resolve/main/qwen3.5-9b-q4_k_m.gguf",
+      "url": "https://huggingface.co/unsloth/Qwen3.5-9B-GGUF/download/qwen3.5-9b-q4_k_m.gguf",
       "n_ctx": 4096,
       "n_gpu_layers": -1,
       "alias": "main_llm"
     },
     {
-      "url": "https://huggingface.co/nomic-ai/nomic-embed-vision-v1.5-GGUF/resolve/main/nomic-embed-vision-v1.5.f16.gguf",
+      "url": "https://huggingface.co/nomic-ai/nomic-embed-vision-v1.5-GGUF/download/nomic-embed-vision-v1.5.f16.gguf",
       "n_ctx": 2048,
       "n_gpu_layers": -1,
       "alias": "vision_embed"

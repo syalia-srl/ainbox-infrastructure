@@ -1,7 +1,7 @@
 #!/bin/bash
 # ==============================================================================
 # SuperBot Build Orchestrator
-# Purpose: Prepares context and triggers Docker build without unnecessary assets.
+# Purpose: Prepares the build context and triggers the Docker image creation.
 # ==============================================================================
 set -e
 
@@ -26,12 +26,12 @@ for f in "${REQUIRED_FILES[@]}"; do
     fi
 done
 
-# 3. Recipe Injection
+# 3. Recipe Injection: Renames the specific recipe to a generic name for Docker
 cp "$RECIPE_PATH" "$BUILD_DIR/recipe.json"
 
 echo "[FACTORY] Starting build for superbot:$IMAGE_TAG"
 
-# 4. Build Execution
+# 4. Build Execution: Standard docker build
 docker build --progress=plain \
     -t "superbot:$IMAGE_TAG" \
     -f "$BUILD_DIR/Dockerfile" \
