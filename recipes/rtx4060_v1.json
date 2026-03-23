@@ -1,25 +1,14 @@
 {
-  "server_ports": {
-    "llm": 8080,
-    "stt": 8001
-  },
   "whisper_node": {
-    "model": "small",
-    "compute_type": "int8",
-    "device": "cuda",
-    "offline_prebaked": true
+    "model": "small"
   },
   "llama_node": [
     {
       "url": "https://huggingface.co/unsloth/Qwen3.5-9B-GGUF/resolve/main/Qwen3.5-9B-Q4_K_M.gguf?download=true",
-      "n_ctx": 4096,
-      "n_gpu_layers": -1,
       "alias": "main_llm"
     },
     {
       "url": "https://huggingface.co/nomic-ai/nomic-embed-text-v1.5-GGUF/resolve/main/nomic-embed-text-v1.5.f16.gguf?download=true",
-      "n_ctx": 2048,
-      "n_gpu_layers": -1,
       "alias": "vision_embed"
     }
   ]
