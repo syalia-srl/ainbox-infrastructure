@@ -39,15 +39,20 @@ COPY pyproject.toml .
 RUN uv pip install --system .
 
 # 5. Model Vault (Descarga con curl para evitar error 8 de wget)
+# Step 5: Model Vault - Download and Symlink
 COPY recipe.json /tmp/recipe.json
 RUN mkdir -p /models && \
-    jq -r '.llama_node[].url' /tmp/recipe.json | while read url; do \
-        if [ -n "$url" ] && [ "$url" != "null" ]; then \
+    jq -c '.llama_node[]' /tmp/recipe.json | while read -r node; do \
+        url=$(echo "$node" | jq -r '.url'); \
+        alias=$(echo "$node" | jq -r '.alias'); \
+        if [ "$url" != "null" ] && [ -n "$alias" ]; then \
+            # Get original filename from URL
             filename=$(basename "$url" | cut -d'?' -f1); \
-            if [ ! -f "/models/$filename" ]; then \
-                echo "[BUILD] Baking GGUF model: $filename..."; \
-                curl -L -f "$url" -o "/models/$filename" --retry 5 --retry-delay 2 -C -; \
-            fi; \
+            echo "[BUILD] Downloading $filename..."; \
+            curl -L -f "$url" -o "/models/$filename" --retry 5; \
+            # Create the symlink: /models/<alias>.gguf -> /models/<original_name>
+            ln -s "/models/$filename" "/models/${alias}.gguf"; \
+            echo "[BUILD] Symlink created: /models/${alias}.gguf -> $filename"; \
         fi; \
     done
 

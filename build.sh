@@ -14,7 +14,8 @@ if [ -z "$RECIPE_PATH" ] || [ ! -f "$RECIPE_PATH" ]; then
     exit 1
 fi
 
-IMAGE_TAG=$(basename "$RECIPE_PATH" .json)
+# build.sh modification
+IMAGE_TAG=${2:-$(basename "$RECIPE_PATH" .json)} # Use 2nd arg or fallback to filename
 
 # 2. Context Integrity Check
 # README.md is no longer required for the build context
