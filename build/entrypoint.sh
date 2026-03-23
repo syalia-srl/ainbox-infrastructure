@@ -28,6 +28,7 @@ if command -v nvidia-smi &> /dev/null && nvidia-smi &> /dev/null; then
 else
     HAS_GPU="false"
     echo "[SYSTEM] Environment: CPU-Only (or GPU drivers missing)."
+    ln -sf /usr/local/cuda/lib64/stubs/libcuda.so /usr/lib/libcuda.so.1
 fi
 
 # 2A. Validate LLM requests against reality

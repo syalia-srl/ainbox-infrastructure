@@ -37,4 +37,4 @@ services:
       - LD_LIBRARY_PATH=/usr/lib:/usr/local/cuda/lib64/stubs
     volumes:
       - ./${CONFIG_PATH}:/app/config/superbot_config.json:ro
-      - /usr/local/cuda/lib64/stubs/libcuda.so:/usr/lib/libcuda.so.1:ro
+      #- /usr/local/cuda/lib64/stubs/libcuda.so:/usr/lib/libcuda.so.1:ro
