@@ -32,40 +32,38 @@ RUN git clone https://github.com/ggerganov/llama.cpp.git && \
 # Forzamos la ruta de las librerías dinámicas
 ENV LD_LIBRARY_PATH=/usr/lib
 
-# --- TODO LO QUE CAMBIE DEBE IR AQUÍ ABAJO ---
-
 # 4. Application Dependencies
 COPY pyproject.toml .
 RUN uv pip install --system .
 
-# 5. Model Vault (Descarga con curl para evitar error 8 de wget)
-# Step 5: Model Vault - Download and Symlink
+# 5. Model Vault - Optimized for Multi-model and Symlinks
 COPY recipe.json /tmp/recipe.json
+
+# Download LLM models and create symlinks based on Alias
 RUN mkdir -p /models && \
     jq -c '.llama_node[]' /tmp/recipe.json | while read -r node; do \
         url=$(echo "$node" | jq -r '.url'); \
         alias=$(echo "$node" | jq -r '.alias'); \
         if [ "$url" != "null" ] && [ -n "$alias" ]; then \
-            # Get original filename from URL
             filename=$(basename "$url" | cut -d'?' -f1); \
-            echo "[BUILD] Downloading $filename..."; \
+            echo "[BUILD] Downloading $filename for alias $alias..."; \
             curl -L -f "$url" -o "/models/$filename" --retry 5; \
-            # Create the symlink: /models/<alias>.gguf -> /models/<original_name>
             ln -s "/models/$filename" "/models/${alias}.gguf"; \
             echo "[BUILD] Symlink created: /models/${alias}.gguf -> $filename"; \
         fi; \
     done
 
-# Pre-loading Whisper models
-RUN WHISPER_MODEL=$(jq -r '.whisper_node.model' /tmp/recipe.json) && \
-    if [ -n "$WHISPER_MODEL" ] && [ "$WHISPER_MODEL" != "null" ]; then \
-        echo "[BUILD] Baking Whisper model: $WHISPER_MODEL..."; \
-        python3 -c "from faster_whisper import WhisperModel; WhisperModel('$WHISPER_MODEL', device='cpu')"; \
-    fi
+# Pre-loading MULTIPLE Whisper models defined in the recipe
+RUN jq -r '.whisper_nodes[].model' /tmp/recipe.json | while read -r model; do \
+    if [ -n "$model" ] && [ "$model" != "null" ]; then \
+        echo "[BUILD] Baking Whisper model: $model..."; \
+        python3 -c "from faster_whisper import WhisperModel; WhisperModel('$model', device='cpu')"; \
+    fi; \
+done
 
 # 6. Runtime Assets
 COPY whisper_api.py . 
 COPY entrypoint.sh .
-RUN chmod +x entrypoint.sh && rm /tmp/recipe.json && mkdir -p /app/config 
+RUN chmod +x entrypoint.sh && rm /tmp/recipe.json && mkdir -p /app/config
 
 ENTRYPOINT ["/app/entrypoint.sh"]

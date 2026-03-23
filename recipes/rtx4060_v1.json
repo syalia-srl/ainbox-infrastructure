@@ -1,7 +1,14 @@
 {
-  "whisper_node": {
-    "model": "small"
-  },
+  "whisper_nodes": [
+    {
+      "model": "tiny",
+      "alias": "fast_stt"
+    },
+    {
+      "model": "small",
+      "alias": "standard_stt"
+    }
+  ],
   "llama_node": [
     {
       "url": "https://huggingface.co/unsloth/Qwen3.5-9B-GGUF/resolve/main/Qwen3.5-9B-Q4_K_M.gguf?download=true",

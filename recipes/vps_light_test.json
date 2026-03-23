@@ -1,7 +1,10 @@
 {
-  "whisper_node": {
-    "model": "small"
-  },
+ "whisper_nodes": [
+    {
+      "model": "tiny",
+      "alias": "fast_stt"
+    }
+  ],
   "llama_node": [
     {
       "url": "https://huggingface.co/nomic-ai/nomic-embed-text-v1.5-GGUF/resolve/main/nomic-embed-text-v1.5.f16.gguf?download=true",
