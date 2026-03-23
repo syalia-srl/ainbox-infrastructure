@@ -8,11 +8,11 @@
   "llama_node": [
     {
       "url": "https://huggingface.co/unsloth/Qwen3.5-9B-GGUF/resolve/main/Qwen3.5-9B-Q4_K_M.gguf?download=true",
-      "alias": "main_llm"
+      "alias": "qwen3.5-9b"
     },
     {
-      "url": "https://huggingface.co/nomic-ai/nomic-embed-text-v1.5-GGUF/resolve/main/nomic-embed-text-v1.5.f16.gguf?download=true",
-      "alias": "vision_embed"
+      "url": "https://huggingface.co/keisuke-miyako/multilingual-e5-small-gguf-q8_0/resolve/main/multilingual-e5-small-Q8_0.gguf",
+      "alias": "e5-small"
     }
   ]
 }

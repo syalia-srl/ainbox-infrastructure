@@ -7,8 +7,8 @@
   ],
   "llama_node": [
     {
-      "url": "https://huggingface.co/nomic-ai/nomic-embed-text-v1.5-GGUF/resolve/main/nomic-embed-text-v1.5.f16.gguf?download=true",
-      "alias": "vision_embed"
+      "url": "https://huggingface.co/keisuke-miyako/multilingual-e5-small-gguf-q8_0/resolve/main/multilingual-e5-small-Q8_0.gguf",
+      "alias": "e5-small"
     }
   ]
 }
