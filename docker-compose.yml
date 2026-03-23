@@ -1,0 +1,31 @@
+version: "3.8"
+
+services:
+  superbot:
+    image: ${IMAGE_TAG:-superbot:latest}
+    container_name: superbot_engine
+    restart: unless-stopped
+    ports:
+      - "${PORT_LLM:-8080}:8080"
+      - "${PORT_STT:-8001}:8001"
+    volumes:
+      - ${CONFIG_PATH}:/app/config/superbot_config.json:ro
+
+  superbot-gpu:
+    extends: superbot
+    profiles: ["gpu"]
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+
+  superbot-cpu:
+    extends: superbot
+    profiles: ["cpu"]
+    environment:
+      - LD_LIBRARY_PATH=/usr/lib:/usr/local/cuda/lib64/stubs
+    volumes:
+      - /usr/local/cuda/lib64/stubs/libcuda.so:/usr/lib/libcuda.so.1:ro
