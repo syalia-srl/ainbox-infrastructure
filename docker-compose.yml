@@ -1,19 +1,23 @@
 version: "3.8"
 
+# Plantilla base (YAML Anchor)
+x-superbot-base: &base
+  image: ${IMAGE_TAG:-superbot:latest}
+  restart: unless-stopped
+  ports:
+    - "${PORT_LLM:-8080}:8080"
+    - "${PORT_STT:-8001}:8001"
+
 services:
-  superbot:
-    image: ${IMAGE_TAG:-superbot:latest}
-    container_name: superbot_engine
-    restart: unless-stopped
-    ports:
-      - "${PORT_LLM:-8080}:8080"
-      - "${PORT_STT:-8001}:8001"
+  # --------------------------------------------------------
+  # PROFILE: GPU
+  # --------------------------------------------------------
+  superbot-gpu:
+    <<: *base
+    container_name: superbot_engine_gpu
+    profiles: ["gpu"]
     volumes:
       - ./${CONFIG_PATH}:/app/config/superbot_config.json:ro
-
-  superbot-gpu:
-    extends: superbot
-    profiles: ["gpu"]
     deploy:
       resources:
         reservations:
@@ -22,10 +26,15 @@ services:
               count: all
               capabilities: [gpu]
 
+  # --------------------------------------------------------
+  # PROFILE: CPU
+  # --------------------------------------------------------
   superbot-cpu:
-    extends: superbot
+    <<: *base
+    container_name: superbot_engine_cpu
     profiles: ["cpu"]
     environment:
       - LD_LIBRARY_PATH=/usr/lib:/usr/local/cuda/lib64/stubs
     volumes:
+      - ./${CONFIG_PATH}:/app/config/superbot_config.json:ro
       - /usr/local/cuda/lib64/stubs/libcuda.so:/usr/lib/libcuda.so.1:ro
