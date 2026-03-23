@@ -23,8 +23,8 @@ ifndef TAG
 endif
 	@if [ ! -f $(CONFIG) ]; then echo "[ERROR] Config file $(CONFIG) not found"; exit 1; fi
 	@echo "[DEPLOY] Launching superbot:$(TAG) with config $(CONFIG) in $(MODE) profile..."
-	@IMAGE_TAG=superbot:$(TAG) CONFIG_PATH=$(CONFIG) docker-compose --profile $(MODE) up -d
+	@IMAGE_TAG=superbot:$(TAG) CONFIG_PATH=$(CONFIG) docker compose --profile $(MODE) up -d
 	@echo "[DEPLOY] Containers initialized. Verify status with: docker logs -f superbot_engine"
 
 stop:
-	@docker-compose --profile gpu --profile cpu down
+	@docker compose --profile gpu --profile cpu down
