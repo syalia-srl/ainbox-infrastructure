@@ -81,7 +81,7 @@ jq -c '.llama_node[]?' "$CONFIG_FILE" | while read -r node; do
 
     # Disable reasoning budget logic
     if [ "$D_THINK" = "true" ]; then
-        CMD_ARGS+=("--reasoning-budget" "0" "--chat-template" "{% for message in messages %}{{'<|im_start|>' + message['role'] + '\n' + message['content'] + '<|im_end|>\n'}}{% endfor %}{{'<|im_start|>assistant\n'}}")
+        CMD_ARGS+=("--reasoning-budget" "0")
     fi
 
     # Launch server in background and capture logs for the wait loop
