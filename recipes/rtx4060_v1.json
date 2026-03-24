@@ -23,8 +23,8 @@
       "alias": "qwen3.5-2b"
     },
     {
-      "url": "https://huggingface.co/nomic-ai/nomic-embed-text-v1.5-GGUF/resolve/main/nomic-embed-text-v1.5.f16.gguf?download=true",
-      "alias": "nomic1.5"
+      "url": "https://huggingface.co/keisuke-miyako/multilingual-e5-small-gguf-q8_0/resolve/main/multilingual-e5-small-Q8_0.gguf",
+      "alias": "e5-small"
     }
   ]
 }

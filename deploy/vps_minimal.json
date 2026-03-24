@@ -1,18 +1,17 @@
 {
   "server_ports": {
-    "llm": 8080,
     "stt": 8001
   },
   "whisper_nodes": [
     {
       "model": "tiny",
-      "device": "cpu",
-      "compute_type": "int8"
+      "alias": "fast_stt"
     }
   ],
   "llama_node": [
     {
-      "alias": "vision_embed",
+      "alias": "e5-small",
+      "port": 8083,
       "n_ctx": 2048,
       "n_gpu_layers": 0
     }

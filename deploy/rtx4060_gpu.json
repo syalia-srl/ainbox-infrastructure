@@ -1,25 +1,53 @@
 {
   "server_ports": {
-    "llm": 8080,
     "stt": 8001
   },
   "whisper_nodes": [
     {
+      "model": "tiny",
+      "alias": "fast_stt"
+    },
+    {
       "model": "small",
-      "device": "cuda",
-      "compute_type": "float16"
+      "alias": "standard_stt"
     }
   ],
   "llama_node": [
     {
-      "alias": "main_llm",
-      "n_ctx": 4096,
-      "n_gpu_layers": -1
+      "alias": "qwen3.5-2b",
+      "port": 8080,
+      "n_ctx": 2048,
+      "n_gpu_layers": -1,
+      "flash_attn": true,
+      "cache_type_k": "q8_0",
+      "cache_type_v": "q8_0"
     },
     {
-      "alias": "vision_embed",
+      "alias": "qwen3.5-4b",
+      "port": 8081,
+      "n_ctx": 4096,
+      "n_gpu_layers": -1,
+      "flash_attn": true,
+      "cache_type_k": "q8_0",
+      "cache_type_v": "q8_0"
+    },
+    {
+      "alias": "qwen3.5-9b",
+      "port": 8082,
+      "n_ctx": 4096,
+      "n_gpu_layers": -1,
+      "disable_thinking": true,
+      "flash_attn": true,
+      "n_batch": 512,
+      "cache_type_k": "q8_0",
+      "cache_type_v": "q8_0"
+    },
+    {
+      "alias": "e5-small",
+      "port": 8083,
       "n_ctx": 2048,
-      "n_gpu_layers": -1
+      "n_gpu_layers": -1,
+      "flash_attn": true
     }
   ]
 }

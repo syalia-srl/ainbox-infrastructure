@@ -4,9 +4,9 @@ version: "3.8"
 x-superbot-base: &base
   image: ${IMAGE_TAG:-superbot:latest}
   restart: unless-stopped
-  ports:
-    - "${PORT_LLM:-8080}:8080"
-    - "${PORT_STT:-8001}:8001"
+  # ESTA ES LA MAGIA: El contenedor usa la red de tu PC directamente.
+  # Lo que levante el entrypoint según el JSON, se expone instantáneamente.
+  network_mode: "host"
 
 services:
   # --------------------------------------------------------
@@ -18,6 +18,7 @@ services:
     profiles: ["gpu"]
     volumes:
       - ./${CONFIG_PATH}:/app/config/superbot_config.json:ro
+      # - ./build/entrypoint.sh:/app/entrypoint.sh:ro  # <-- HACK LOCAL INTACTO
     deploy:
       resources:
         reservations:
@@ -37,4 +38,4 @@ services:
       - LD_LIBRARY_PATH=/usr/lib:/usr/local/cuda/lib64/stubs
     volumes:
       - ./${CONFIG_PATH}:/app/config/superbot_config.json:ro
-      #- /usr/local/cuda/lib64/stubs/libcuda.so:/usr/lib/libcuda.so.1:ro
+      # - ./build/entrypoint.sh:/app/entrypoint.sh:ro  # <-- HACK LOCAL INTACTO
