@@ -57,6 +57,7 @@ jq -c '.llama_node[]?' "$CONFIG_FILE" | while read -r node; do
     CACHE_K=$(echo "$node" | jq -r '.cache_type_k // "f16"')
     CACHE_V=$(echo "$node" | jq -r '.cache_type_v // "f16"')
     THREADS=$(echo "$node" | jq -r '.threads // null')
+    LORAS_JSON=$(echo "$node" | jq -c '.loras // []')
 
     MODEL_PATH="/models/${ALIAS}.gguf"
 
@@ -81,11 +82,37 @@ jq -c '.llama_node[]?' "$CONFIG_FILE" | while read -r node; do
 
     # Disable reasoning budget logic
     if [ "$D_THINK" = "true" ]; then
+        echo "      [LLM] Protocol: STANDARD (Non-Reasoning)"
+        CMD_ARGS+=("--reasoning" "off")
+        
         CMD_ARGS+=("--reasoning-budget" "0")
+        
+        CMD_ARGS+=("--reasoning-format" "none")
+    else
+        echo "      [LLM] Protocol: REASONING"
     fi
 
+    # Loras juggling logic
+    LORA_ARG_LIST=""
+    if [ "$LORAS_JSON" != "[]" ]; then
+        for lora_row in $(echo "$LORAS_JSON" | jq -c '.[]'); do
+            LORA_ALIAS=$(echo "$lora_row" | jq -r '.alias')
+            LORA_FILE=$(echo "$lora_row" | jq -r '.file')
+            LORA_SCALE=$(echo "$lora_row" | jq -r '.scale // 1.0')
+            ln -sf "/loras/${LORA_FILE}" "./${LORA_ALIAS}"
+
+            if [ ! -f "/loras/${LORA_FILE}" ]; then
+                echo "      [WARNING] LoRA file '${LORA_FILE}' NO encontrado en /loras/. Ignorando este adaptador..."
+                continue 
+            fi
+            
+            if [ -z "$LORA_ARG_LIST" ]; then LORA_ARG_LIST="$LORA_ALIAS:$LORA_SCALE"
+            else LORA_ARG_LIST="$LORA_ARG_LIST,$LORA_ALIAS:$LORA_SCALE"; fi
+        done
+        [ -n "$LORA_ARG_LIST" ] && CMD_ARGS+=("--lora-scaled" "$LORA_ARG_LIST")
+    fi
     # Launch server in background and capture logs for the wait loop
-    /app/llama-server "${CMD_ARGS[@]}" > "/var/log/${ALIAS}.log" 2>&1 &
+    /app/llama-server "${CMD_ARGS[@]}" 2>&1 | sed -u "s/^/[$ALIAS] /" | tee "/var/log/${ALIAS}.log" &
 
     # --- 4E. ROBUST SEMAPHORE ---
     echo "      [WAIT] Polling 127.0.0.1:${NODE_PORT}..."

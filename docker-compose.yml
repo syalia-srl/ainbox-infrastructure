@@ -1,11 +1,9 @@
 version: "3.8"
 
-# Plantilla base (YAML Anchor)
+# Base Template (YAML Anchor)
 x-superbot-base: &base
   image: ${IMAGE_TAG:-superbot:latest}
   restart: unless-stopped
-  # ESTA ES LA MAGIA: El contenedor usa la red de tu PC directamente.
-  # Lo que levante el entrypoint según el JSON, se expone instantáneamente.
   network_mode: "host"
 
 services:
@@ -18,7 +16,8 @@ services:
     profiles: ["gpu"]
     volumes:
       - ./${CONFIG_PATH}:/app/config/superbot_config.json:ro
-      # - ./build/entrypoint.sh:/app/entrypoint.sh:ro  # <-- HACK LOCAL INTACTO
+      - ${LORAS_PATH:-./loras}:/loras:ro
+      - ./build/entrypoint.sh:/app/entrypoint.sh:ro  # <-- HACK LOCAL 
     deploy:
       resources:
         reservations:
@@ -38,4 +37,5 @@ services:
       - LD_LIBRARY_PATH=/usr/lib:/usr/local/cuda/lib64/stubs
     volumes:
       - ./${CONFIG_PATH}:/app/config/superbot_config.json:ro
-      # - ./build/entrypoint.sh:/app/entrypoint.sh:ro  # <-- HACK LOCAL INTACTO
+      - ${LORAS_PATH:-./loras}:/loras:ro
+      - ./build/entrypoint.sh:/app/entrypoint.sh:ro  # <-- HACK LOCAL 

@@ -10,14 +10,21 @@
   ],
   "llama_node": [
     {
-      "alias": "qwen3.5-9b",
+      "alias": "qwen3.5-2b",
       "port": 9000,
-      "n_ctx": 4096,
+      "n_ctx": 16384,
       "n_gpu_layers": -1,
       "flash_attn": true,
       "cache_type_k": "q8_0",
       "cache_type_v": "q8_0",
-      "disable_thinking": true
+      "disable_thinking": false,
+      "loras": [
+        {
+          "file": "qwen35_voice_adapter.gguf",
+          "alias": "voice_original",
+          "scale": 0.0
+        }
+      ]
     },
     {
       "alias": "e5-small",
