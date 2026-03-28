@@ -17,7 +17,7 @@ services:
     volumes:
       - ./${CONFIG_PATH}:/app/config/superbot_config.json:ro
       - ${LORAS_PATH:-./loras}:/loras:ro
-      - ./build/entrypoint.sh:/app/entrypoint.sh:ro  # <-- HACK LOCAL 
+      # - ./build/entrypoint.sh:/app/entrypoint.sh:ro  # <-- HACK LOCAL 
     deploy:
       resources:
         reservations:
@@ -38,4 +38,4 @@ services:
     volumes:
       - ./${CONFIG_PATH}:/app/config/superbot_config.json:ro
       - ${LORAS_PATH:-./loras}:/loras:ro
-      - ./build/entrypoint.sh:/app/entrypoint.sh:ro  # <-- HACK LOCAL 
+      # - ./build/entrypoint.sh:/app/entrypoint.sh:ro  # <-- HACK LOCAL 
