@@ -5,8 +5,22 @@ import pytest
 import respx
 from asgi_lifespan import LifespanManager
 from ainbox_gateway.app import create_app
-from ainbox_gateway.spec import Spec, LlmNode
+from ainbox_gateway.spec import Spec, LlmNode, EmbeddingsNode
 from ainbox_gateway.supervisor import build_pools
+
+
+class _FakeEmbedder:
+    def __init__(self, node):
+        self.slug = node.slug
+
+    def embed(self, texts):
+        return [[float(len(t)), 0.5] for t in texts]
+
+
+def _app_with_embeddings():
+    spec = Spec(gateway_port=8080, llm=[LlmNode(slug="a", replicas=2)],
+                embeddings=[EmbeddingsNode(slug="emb", model="MiniLM")])
+    return create_app(spec, FakeSupervisor(), embedder_factory=_FakeEmbedder)
 
 
 class FakeSupervisor:
@@ -78,6 +92,38 @@ async def test_models_endpoint_lists_slugs():
     assert body["object"] == "list"
     assert [m["id"] for m in body["data"]] == ["a"]
     assert body["data"][0]["object"] == "model"
+
+
+@pytest.mark.asyncio
+async def test_embeddings_list_input():
+    async with _client(_app_with_embeddings()) as c:
+        r = await c.post("/v1/embeddings", json={"model": "emb", "input": ["ab", "xyz"]})
+    body = r.json()
+    assert body["object"] == "list" and body["model"] == "emb"
+    assert [d["embedding"] for d in body["data"]] == [[2.0, 0.5], [3.0, 0.5]]
+    assert [d["index"] for d in body["data"]] == [0, 1]
+
+
+@pytest.mark.asyncio
+async def test_embeddings_string_input_normalized():
+    async with _client(_app_with_embeddings()) as c:
+        r = await c.post("/v1/embeddings", json={"model": "emb", "input": "hello"})
+    data = r.json()["data"]
+    assert len(data) == 1 and data[0]["embedding"] == [5.0, 0.5]
+
+
+@pytest.mark.asyncio
+async def test_embeddings_unknown_model_404():
+    async with _client(_app_with_embeddings()) as c:
+        r = await c.post("/v1/embeddings", json={"model": "nope", "input": "x"})
+    assert r.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_models_includes_embeddings():
+    async with _client(_app_with_embeddings()) as c:
+        r = await c.get("/v1/models")
+    assert [m["id"] for m in r.json()["data"]] == ["a", "emb"]
 
 
 @pytest.mark.asyncio
