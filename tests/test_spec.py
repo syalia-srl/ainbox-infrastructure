@@ -1,6 +1,6 @@
 import pytest
 from ainbox_gateway.spec import (
-    load_spec, Spec, LlmNode, LoraSpec, EmbeddingsNode, SttNode, SpecError)
+    load_spec, Spec, LlmNode, LoraSpec, EmbeddingsNode, SttNode, TtsNode, SpecError)
 
 
 def test_minimal_spec():
@@ -71,3 +71,22 @@ def test_stt_node_missing_model_raises():
     with pytest.raises(SpecError):
         load_spec({"gateway": {"port": 8080}, "llm": [{"slug": "a"}],
                    "stt": [{"slug": "w"}]})
+
+
+def test_tts_optional_defaults_empty():
+    spec = load_spec({"gateway": {"port": 8080}, "llm": [{"slug": "a"}]})
+    assert spec.tts == []
+
+
+def test_tts_parsed():
+    spec = load_spec({"gateway": {"port": 8080}, "llm": [{"slug": "a"}],
+                      "tts": [{"slug": "voice", "model": "kokoro",
+                               "lang_code": "e", "voice": "ef_dora"}]})
+    assert spec.tts == [TtsNode(slug="voice", model="kokoro", device="cuda",
+                                lang_code="e", voice="ef_dora")]
+
+
+def test_tts_node_missing_model_raises():
+    with pytest.raises(SpecError):
+        load_spec({"gateway": {"port": 8080}, "llm": [{"slug": "a"}],
+                   "tts": [{"slug": "voice"}]})

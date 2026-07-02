@@ -43,11 +43,21 @@ class SttNode:
 
 
 @dataclass
+class TtsNode:
+    slug: str
+    model: str
+    device: str = "cuda"
+    lang_code: str = "a"
+    voice: str = "af_heart"
+
+
+@dataclass
 class Spec:
     gateway_port: int
     llm: list[LlmNode]
     embeddings: list[EmbeddingsNode] = field(default_factory=list)
     stt: list[SttNode] = field(default_factory=list)
+    tts: list[TtsNode] = field(default_factory=list)
 
 
 def _load_node(raw: dict) -> LlmNode:
@@ -81,6 +91,15 @@ def _load_stt(raw: dict) -> SttNode:
                    compute_type=raw.get("compute_type", "float16"))
 
 
+def _load_tts(raw: dict) -> TtsNode:
+    if "slug" not in raw or "model" not in raw:
+        raise SpecError("tts node needs 'slug' and 'model'")
+    return TtsNode(slug=raw["slug"], model=raw["model"],
+                   device=raw.get("device", "cuda"),
+                   lang_code=raw.get("lang_code", "a"),
+                   voice=raw.get("voice", "af_heart"))
+
+
 def load_spec(data: dict) -> Spec:
     gateway = data.get("gateway")
     if not gateway or "port" not in gateway:
@@ -93,4 +112,5 @@ def load_spec(data: dict) -> Spec:
         llm=[_load_node(n) for n in raw_llm],
         embeddings=[_load_embeddings(e) for e in data.get("embeddings", [])],
         stt=[_load_stt(s) for s in data.get("stt", [])],
+        tts=[_load_tts(t) for t in data.get("tts", [])],
     )
