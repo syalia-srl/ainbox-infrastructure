@@ -1,16 +1,34 @@
 """FastAPI gateway: one pure-OpenAI front door over routed backend pools."""
 from __future__ import annotations
 
+from contextlib import asynccontextmanager
+
 import httpx
 from fastapi import FastAPI, Request, Response
 from fastapi.responses import JSONResponse, StreamingResponse
 from starlette.background import BackgroundTask
 
 from .router import Router, UnknownModel
+from .spec import Spec
+from .supervisor import Supervisor
 
 
-def create_app(router: Router, client: httpx.AsyncClient) -> FastAPI:
-    app = FastAPI(title="ainbox-infrastructure gateway")
+def create_app(spec: Spec, supervisor: Supervisor,
+               client: httpx.AsyncClient | None = None) -> FastAPI:
+    client = client or httpx.AsyncClient(timeout=None)
+
+    @asynccontextmanager
+    async def lifespan(app: FastAPI):
+        pools = supervisor.start(spec)
+        app.state.router = Router(pools)
+        yield
+        supervisor.stop()
+        await client.aclose()
+
+    app = FastAPI(title="ainbox-infrastructure gateway", lifespan=lifespan)
+
+    def _router() -> Router:
+        return app.state.router
 
     async def _proxy(request: Request, path: str) -> Response:
         body = await request.body()
@@ -22,7 +40,7 @@ def create_app(router: Router, client: httpx.AsyncClient) -> FastAPI:
         if not model:
             return JSONResponse({"error": "missing 'model'"}, status_code=400)
         try:
-            backend = router.resolve(model)
+            backend = _router().resolve(model)
         except UnknownModel:
             return JSONResponse(
                 {"error": f"model '{model}' is not raised"}, status_code=404)
@@ -49,9 +67,8 @@ def create_app(router: Router, client: httpx.AsyncClient) -> FastAPI:
     @app.get("/v1/models")
     async def list_models() -> Response:
         data = [{"id": s, "object": "model", "owned_by": "ainbox"}
-                for s in router.models()]
+                for s in _router().models()]
         return JSONResponse({"object": "list", "data": data})
 
-    app.state.router = router
     app.state.client = client
     return app

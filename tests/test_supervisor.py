@@ -1,5 +1,5 @@
 from ainbox_gateway.spec import Spec, LlmNode, LoraSpec
-from ainbox_gateway.supervisor import assign_ports, llama_argv
+from ainbox_gateway.supervisor import assign_ports, llama_argv, build_pools
 
 
 def test_assign_ports_expands_replicas_contiguously():
@@ -32,3 +32,13 @@ def test_llama_argv_flash_attn_and_loras():
     argv = llama_argv(node, port=9001)
     assert argv[argv.index("--flash-attn") + 1] == "on"
     assert argv[argv.index("--lora-scaled") + 1] == "/loras/v.gguf:0.8"
+
+
+def test_build_pools_groups_replicas_by_slug():
+    spec = Spec(gateway_port=8080, llm=[
+        LlmNode(slug="a", replicas=2), LlmNode(slug="b", replicas=1)])
+    pools = build_pools(spec, base=9000)
+    assert set(pools) == {"a", "b"}
+    assert [b.base_url for b in pools["a"]._backends] == [
+        "http://127.0.0.1:9000", "http://127.0.0.1:9001"]
+    assert [b.base_url for b in pools["b"]._backends] == ["http://127.0.0.1:9002"]
