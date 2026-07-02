@@ -1,6 +1,7 @@
 import pytest
 from ainbox_gateway.spec import (
-    load_spec, Spec, LlmNode, LoraSpec, EmbeddingsNode, SttNode, TtsNode, SpecError)
+    load_spec, Spec, LlmNode, LoraSpec, EmbeddingsNode, SttNode, TtsNode,
+    ImagesNode, SpecError)
 
 
 def test_minimal_spec():
@@ -90,3 +91,24 @@ def test_tts_node_missing_model_raises():
     with pytest.raises(SpecError):
         load_spec({"gateway": {"port": 8080}, "llm": [{"slug": "a"}],
                    "tts": [{"slug": "voice"}]})
+
+
+def test_images_optional_defaults_empty():
+    spec = load_spec({"gateway": {"port": 8080}, "llm": [{"slug": "a"}]})
+    assert spec.images == []
+
+
+def test_images_parsed_with_knobs():
+    spec = load_spec({"gateway": {"port": 8080}, "llm": [{"slug": "a"}],
+                      "images": [{"slug": "flux", "model": "black-forest-labs/FLUX.1-schnell",
+                                  "offload": True, "quant": "fp8"}]})
+    assert spec.images == [ImagesNode(slug="flux",
+                                      model="black-forest-labs/FLUX.1-schnell",
+                                      device="cuda", offload=True, quant="fp8",
+                                      steps=4, guidance=0.0)]
+
+
+def test_images_node_missing_model_raises():
+    with pytest.raises(SpecError):
+        load_spec({"gateway": {"port": 8080}, "llm": [{"slug": "a"}],
+                   "images": [{"slug": "flux"}]})

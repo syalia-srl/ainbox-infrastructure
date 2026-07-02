@@ -52,12 +52,24 @@ class TtsNode:
 
 
 @dataclass
+class ImagesNode:
+    slug: str
+    model: str
+    device: str = "cuda"
+    offload: bool = False
+    quant: str = "fp8"
+    steps: int = 4
+    guidance: float = 0.0
+
+
+@dataclass
 class Spec:
     gateway_port: int
     llm: list[LlmNode]
     embeddings: list[EmbeddingsNode] = field(default_factory=list)
     stt: list[SttNode] = field(default_factory=list)
     tts: list[TtsNode] = field(default_factory=list)
+    images: list[ImagesNode] = field(default_factory=list)
 
 
 def _load_node(raw: dict) -> LlmNode:
@@ -100,6 +112,17 @@ def _load_tts(raw: dict) -> TtsNode:
                    voice=raw.get("voice", "af_heart"))
 
 
+def _load_images(raw: dict) -> ImagesNode:
+    if "slug" not in raw or "model" not in raw:
+        raise SpecError("images node needs 'slug' and 'model'")
+    return ImagesNode(slug=raw["slug"], model=raw["model"],
+                      device=raw.get("device", "cuda"),
+                      offload=raw.get("offload", False),
+                      quant=raw.get("quant", "fp8"),
+                      steps=raw.get("steps", 4),
+                      guidance=raw.get("guidance", 0.0))
+
+
 def load_spec(data: dict) -> Spec:
     gateway = data.get("gateway")
     if not gateway or "port" not in gateway:
@@ -113,4 +136,5 @@ def load_spec(data: dict) -> Spec:
         embeddings=[_load_embeddings(e) for e in data.get("embeddings", [])],
         stt=[_load_stt(s) for s in data.get("stt", [])],
         tts=[_load_tts(t) for t in data.get("tts", [])],
+        images=[_load_images(i) for i in data.get("images", [])],
     )
