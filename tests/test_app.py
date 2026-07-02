@@ -322,7 +322,19 @@ async def test_root_serves_ui():
         r = await c.get("/")
     assert r.status_code == 200
     assert "text/html" in r.headers["content-type"]
-    assert "ainbox" in r.text.lower()
+    assert "syalia" in r.text.lower()
+
+
+@pytest.mark.asyncio
+async def test_brand_assets_served():
+    app = create_app(Spec(gateway_port=8080, llm=[LlmNode(slug="a")]),
+                     FakeSupervisor(), embedder_factory=_FakeEmbedder,
+                     transcriber_factory=_FakeTranscriber,
+                     spec_raw={"gateway": {"port": 8080}, "llm": [{"slug": "a"}]})
+    async with _client(app) as c:
+        r = await c.get("/syalia-ui/syalia-ui.css")
+    assert r.status_code == 200
+    assert "SYALIA" in r.text
 
 
 @pytest.mark.asyncio

@@ -1,0 +1,148 @@
+/* ============================================================================
+ * SYALIA UI — shared design foundation for the AInBox suite.
+ * SOURCE OF TRUTH. Copied verbatim (with the fonts/ dir) into each app's
+ * static assets. Keep the copies in sync. Offline-first: fonts are vendored
+ * locally (no CDN), so the airgapped appliance renders the brand correctly.
+ *
+ * What it provides:
+ *   - Brand font (Inter) + Material Icons, both local @font-face.
+ *   - Design tokens (slate dark palette, SYALIA gradient, accent, status).
+ *   - The SYALIA wordmark + brand header.
+ *   - Opt-in base components (.su-btn, .su-input, .su-card) apps can adopt.
+ * ==========================================================================*/
+
+@font-face {
+  font-family: "Inter";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("fonts/Inter-Variable.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Material Icons";
+  font-style: normal;
+  font-weight: 400;
+  font-display: block;
+  src: url("fonts/MaterialIcons-Regular.woff2") format("woff2");
+}
+
+:root {
+  /* Brand gradient — SYALIA identity (cyan → indigo → violet). */
+  --syalia-grad: linear-gradient(90deg, #38bdf8, #818cf8, #c084fc);
+
+  /* Slate dark palette (one gray family across the suite). */
+  --bg-deep: #020617;   /* slate-950 — app shell / deepest panes */
+  --bg:      #0f172a;   /* slate-900 — primary background */
+  --surface: #1e293b;   /* slate-800 — cards, panels, inputs */
+  --surface-2:#334155;  /* slate-700 — raised / hover surface */
+  --border:  #334155;   /* slate-700 — standard borders */
+  --border-hi:#475569;  /* slate-600 — hover/active borders */
+
+  --text:    #e2e8f0;   /* slate-200 — primary text */
+  --text-dim:#94a3b8;   /* slate-400 — secondary text */
+  --text-faint:#64748b; /* slate-500 — hints, timestamps */
+
+  /* Interactive accent — solid blue (gradient reserved for brand moments). */
+  --accent:   #2563eb;  /* blue-600 */
+  --accent-hi:#3b82f6;  /* blue-500 */
+  --accent-lo:rgba(59,130,246,.14);
+
+  /* Status. */
+  --ok:   #34d399;
+  --warn: #fbbf24;
+  --err:  #f87171;
+
+  --font-sans: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+
+  --radius: 8px;
+  --radius-sm: 6px;
+}
+
+html, body {
+  font-family: var(--font-sans);
+  /* Inter looks best with these. */
+  font-feature-settings: "cv05", "ss01";
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* Material Icons — canonical icon system across all surfaces. */
+.material-icons {
+  font-family: "Material Icons";
+  font-weight: normal;
+  font-style: normal;
+  font-size: 24px;
+  line-height: 1;
+  letter-spacing: normal;
+  text-transform: none;
+  display: inline-block;
+  white-space: nowrap;
+  word-wrap: normal;
+  direction: ltr;
+  -webkit-font-feature-settings: "liga";
+  font-feature-settings: "liga";
+  -webkit-font-smoothing: antialiased;
+}
+/* Inline variant — sits on the text baseline (for icons beside labels). */
+.material-icons.mi-inline {
+  font-size: 1.15em;
+  vertical-align: -0.22em;
+}
+/* `.material-icons` sets display:inline-block, which would otherwise beat
+ * Tailwind's `.hidden{display:none}` (same specificity, loaded earlier). Keep
+ * `.hidden` working on icons that apps toggle (e.g. send play/stop). */
+.material-icons.hidden { display: none; }
+
+/* ---- Brand wordmark ------------------------------------------------------ */
+.syalia-brand { display: flex; align-items: baseline; gap: .5rem; }
+.syalia-wordmark {
+  font-weight: 800;
+  letter-spacing: .04em;
+  background: var(--syalia-grad);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+/* The per-app name beside the wordmark (e.g. "SYALIA · magpie"). */
+.syalia-appname { color: var(--text-dim); font-weight: 600; letter-spacing: .02em; }
+
+/* ---- Opt-in base components ---------------------------------------------- */
+.su-btn {
+  font-family: var(--font-sans);
+  display: inline-flex; align-items: center; gap: .4rem;
+  padding: 8px 14px; border: 0; border-radius: var(--radius);
+  background: var(--accent); color: #fff; font-weight: 600; font-size: .9rem;
+  cursor: pointer; transition: background 120ms ease;
+}
+.su-btn:hover { background: var(--accent-hi); }
+.su-btn:disabled { opacity: .5; cursor: not-allowed; }
+.su-btn--ghost { background: transparent; color: var(--text-dim); }
+.su-btn--ghost:hover { background: var(--surface-2); color: var(--text); }
+
+.su-input {
+  font-family: var(--font-sans);
+  width: 100%; padding: 9px 12px;
+  background: var(--surface); color: var(--text);
+  border: 1px solid var(--border); border-radius: var(--radius);
+  outline: none; transition: border-color 120ms ease, box-shadow 120ms ease;
+}
+.su-input::placeholder { color: var(--text-faint); }
+.su-input:focus { border-color: var(--accent-hi); box-shadow: 0 0 0 2px var(--accent-lo); }
+
+.su-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+/* Active/brand accent bar (e.g. selected nav item) uses the gradient. */
+.su-active-grad { background: var(--syalia-grad); }
+
+/* ---- Drag-to-resize handle (pairs with resize.js) ----------------------- */
+.syalia-resize {
+  flex: 0 0 5px; width: 5px; cursor: col-resize;
+  background: transparent; transition: background 120ms ease;
+  align-self: stretch;
+}
+.syalia-resize:hover { background: var(--accent-lo); }
+.syalia-resize.resizing { background: var(--accent); }

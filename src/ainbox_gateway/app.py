@@ -10,6 +10,7 @@ from pathlib import Path
 import httpx
 from fastapi import FastAPI, File, Form, Request, Response, UploadFile
 from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
+from fastapi.staticfiles import StaticFiles
 from starlette.background import BackgroundTask
 
 from .embeddings import Embedder, build_embedders
@@ -20,7 +21,8 @@ from .stt import Transcriber, build_transcribers
 from .tts import Synthesizer, build_synthesizers
 from .supervisor import Supervisor
 
-_UI_FILE = Path(__file__).parent / "static" / "ui.html"
+_STATIC = Path(__file__).parent / "static"
+_UI_FILE = _STATIC / "ui.html"
 
 
 def _default_embedder_factory(node: EmbeddingsNode) -> Embedder:
@@ -210,6 +212,8 @@ def create_app(spec: Spec, supervisor: Supervisor,
                        | set(app.state.generators))
         data = [{"id": s, "object": "model", "owned_by": "ainbox"} for s in slugs]
         return JSONResponse({"object": "list", "data": data})
+
+    app.mount("/syalia-ui", StaticFiles(directory=_STATIC / "syalia-ui"), name="syalia-ui")
 
     @app.get("/")
     async def ui() -> Response:

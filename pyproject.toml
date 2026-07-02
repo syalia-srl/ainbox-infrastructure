@@ -24,7 +24,8 @@ build-backend = "setuptools.build_meta"
 where = ["src"]
 
 [tool.setuptools.package-data]
-ainbox_gateway = ["static/*.html"]
+ainbox_gateway = ["static/*.html", "static/syalia-ui/*.css", "static/syalia-ui/*.svg",
+                  "static/syalia-ui/*.js", "static/syalia-ui/fonts/*.woff2"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"

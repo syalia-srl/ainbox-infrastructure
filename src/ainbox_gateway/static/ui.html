@@ -3,205 +3,144 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>AInBox engine · loadout</title>
-<link rel="preconnect" href="https://fonts.googleapis.com"/>
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet"/>
+<title>SYALIA · Engine</title>
+<link rel="icon" href="/syalia-ui/favicon.svg"/>
+<link rel="stylesheet" href="/syalia-ui/syalia-ui.css"/>
 <style>
-  :root {
-    color-scheme: dark;
-    --void:#0b0d10; --panel:#14181e; --panel-2:#1a1f28; --edge:#2a313b;
-    --ink:#eaedf2; --mute:#828d9c; --faint:#5a6472;
-    --signal:#f5a623; --signal-dim:#5c4a26;
-    --cool:#5cc8d7; --cool-dim:#24484f;
-    --live:#3ecf8e; --warn:#e5534b;
-    --disp:'Space Grotesk', system-ui, sans-serif;
-    --mono:'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
-  }
   * { box-sizing:border-box; }
-  html,body { margin:0; height:100%; }
+  html,body { margin:0; min-height:100%; background:var(--bg-deep); color:var(--text); }
   body {
     background:
-      radial-gradient(1200px 600px at 85% -10%, #171c24 0%, transparent 60%),
-      var(--void);
-    color:var(--ink); font-family:var(--disp);
-    -webkit-font-smoothing:antialiased;
+      radial-gradient(1100px 520px at 88% -12%, rgba(129,140,248,.10) 0%, transparent 62%),
+      var(--bg-deep);
   }
 
   /* ---- header / relaunch bar ---- */
   header {
-    position:sticky; top:0; z-index:20;
-    display:flex; align-items:center; gap:18px;
-    padding:16px 26px; background:rgba(11,13,16,.86);
-    backdrop-filter:blur(8px); border-bottom:1px solid var(--edge);
+    position:sticky; top:0; z-index:20; display:flex; align-items:center; gap:16px;
+    padding:14px 26px; background:rgba(2,6,23,.82); backdrop-filter:blur(10px);
+    border-bottom:1px solid var(--border);
   }
-  .mark { display:flex; align-items:center; gap:11px; }
-  .glyph {
-    width:26px; height:26px; border-radius:7px;
-    background:linear-gradient(150deg, var(--signal), #d1741a);
-    box-shadow:0 0 0 1px #00000040, 0 6px 18px -6px var(--signal);
-    display:grid; place-items:center; color:#1a1204; font-weight:700;
-    font-family:var(--mono); font-size:14px;
-  }
-  .mark h1 { margin:0; font-size:16px; font-weight:600; letter-spacing:.2px; }
-  .eyebrow {
-    font-family:var(--mono); font-size:10.5px; letter-spacing:2.5px;
-    text-transform:uppercase; color:var(--faint); margin-top:1px;
-  }
+  .brandmark { width:30px; height:30px; border-radius:8px; flex:none;
+               box-shadow:0 0 0 1px #00000050, 0 8px 20px -8px rgba(129,140,248,.5); }
+  .titles h1 { margin:0; font-size:15px; font-weight:600; display:flex;
+               align-items:baseline; gap:7px; }
+  .titles .eyebrow { font-family:var(--font-mono); font-size:10px; letter-spacing:2px;
+                     text-transform:uppercase; color:var(--text-faint); margin-top:2px; }
   .spacer { flex:1; }
-  .live-count {
-    font-family:var(--mono); font-size:11.5px; color:var(--mute);
-    letter-spacing:.4px; text-align:right; line-height:1.35;
-  }
-  .live-count b { color:var(--live); font-weight:700; }
+  .live-count { font-family:var(--font-mono); font-size:11.5px; color:var(--text-dim);
+                text-align:right; line-height:1.4; }
+  .live-count b { color:var(--ok); font-weight:700; }
   .relaunch {
-    font-family:var(--disp); font-weight:600; font-size:14px;
-    border:1px solid var(--edge); border-radius:9px; padding:11px 18px;
-    background:var(--panel-2); color:var(--mute); cursor:not-allowed;
-    display:flex; align-items:center; gap:9px; transition:all .18s ease;
+    font-family:var(--font-sans); font-weight:600; font-size:14px;
+    border:1px solid var(--border); border-radius:var(--radius); padding:10px 16px;
+    background:var(--surface); color:var(--text-dim); cursor:not-allowed;
+    display:flex; align-items:center; gap:8px; transition:all .16s ease;
   }
-  .relaunch .n {
-    font-family:var(--mono); font-size:12px; font-weight:700;
-    background:#00000030; border-radius:6px; padding:1px 7px;
-  }
-  .relaunch.dirty {
-    cursor:pointer; color:#1a1204; border-color:transparent;
-    background:linear-gradient(150deg, var(--signal), #e08d1a);
-    box-shadow:0 8px 26px -10px var(--signal);
-  }
-  .relaunch.dirty:hover { filter:brightness(1.07); }
-  .relaunch.busy { opacity:.7; cursor:wait; }
+  .relaunch .material-icons { font-size:18px; }
+  .relaunch .n { font-family:var(--font-mono); font-size:12px; font-weight:700;
+                 background:rgba(255,255,255,.16); border-radius:6px; padding:1px 7px; }
+  .relaunch.dirty { cursor:pointer; color:#fff; border-color:transparent;
+                    background:var(--accent); box-shadow:0 8px 24px -10px var(--accent); }
+  .relaunch.dirty:hover { background:var(--accent-hi); }
+  .relaunch.busy { opacity:.65; cursor:wait; }
 
   /* ---- rails ---- */
-  main { max-width:1180px; margin:0 auto; padding:26px 26px 80px; }
-  .rail { margin-bottom:30px; }
-  .rail-head {
-    display:flex; align-items:baseline; gap:12px; margin-bottom:13px;
-    padding-bottom:9px; border-bottom:1px solid var(--edge);
-  }
-  .rail-head .kind {
-    font-family:var(--mono); font-size:11px; letter-spacing:2px;
-    text-transform:uppercase; color:var(--signal); font-weight:700;
-  }
-  .rail-head .desc { font-size:13px; color:var(--mute); }
-  .rail-head .count { font-family:var(--mono); font-size:11px; color:var(--faint); }
-  .add {
-    margin-left:auto; position:relative;
-    font-family:var(--mono); font-size:12px; color:var(--cool);
-    background:transparent; border:1px dashed var(--cool-dim); border-radius:8px;
-    padding:6px 12px; cursor:pointer; transition:all .15s ease;
-  }
-  .add:hover { border-color:var(--cool); background:#5cc8d70d; }
+  main { max-width:1180px; margin:0 auto; padding:24px 26px 80px; }
+  .rail { margin-bottom:28px; }
+  .rail-head { display:flex; align-items:baseline; gap:11px; margin-bottom:13px;
+               padding-bottom:9px; border-bottom:1px solid var(--border); }
+  .rail-head .kind { font-family:var(--font-mono); font-size:11px; letter-spacing:1.5px;
+                     text-transform:uppercase; color:var(--accent-hi); font-weight:700; }
+  .rail-head .desc { font-size:13px; color:var(--text-dim); }
+  .rail-head .count { font-family:var(--font-mono); font-size:11px; color:var(--text-faint); }
+  .add { margin-left:auto; position:relative; display:inline-flex; align-items:center; gap:5px;
+         font-family:var(--font-sans); font-size:12.5px; color:var(--accent-hi);
+         background:transparent; border:1px dashed var(--border-hi); border-radius:var(--radius);
+         padding:6px 11px; cursor:pointer; transition:all .15s ease; }
+  .add:hover { border-color:var(--accent-hi); background:var(--accent-lo); }
+  .add .material-icons { font-size:16px; }
 
   .modules { display:flex; flex-wrap:wrap; gap:14px; }
-  .module {
-    width:262px; background:var(--panel); border:1px solid var(--edge);
-    border-radius:12px; padding:14px 15px 13px; position:relative;
-    transition:border-color .18s ease, box-shadow .18s ease;
-  }
-  .module.pending {
-    border-color:var(--signal-dim);
-    box-shadow:0 0 0 1px var(--signal-dim), 0 10px 30px -18px var(--signal);
-  }
-  .m-top { display:flex; align-items:center; gap:9px; margin-bottom:12px; }
-  .dot { width:9px; height:9px; border-radius:50%; flex:none;
-         background:var(--live); box-shadow:0 0 10px -1px var(--live); }
-  .module.pending .dot {
-    background:var(--signal); box-shadow:0 0 10px -1px var(--signal);
-    animation:pulse 1.7s ease-in-out infinite;
-  }
-  .slug { font-family:var(--mono); font-size:14px; font-weight:700;
-          color:var(--ink); letter-spacing:-.2px; overflow:hidden;
-          text-overflow:ellipsis; white-space:nowrap; }
-  .rm { margin-left:auto; width:22px; height:22px; border-radius:6px;
-        border:0; background:transparent; color:var(--faint); cursor:pointer;
-        font-size:15px; line-height:1; transition:all .15s ease; flex:none; }
-  .rm:hover { background:#e5534b1a; color:var(--warn); }
+  .module { width:264px; background:var(--surface); border:1px solid var(--border);
+            border-radius:10px; padding:13px 15px 12px; transition:all .18s ease; }
+  .module.pending { border-color:var(--warn);
+                    box-shadow:0 0 0 1px rgba(251,191,36,.35), 0 12px 30px -20px var(--warn); }
+  .m-top { display:flex; align-items:center; gap:9px; margin-bottom:11px; }
+  .dot { width:8px; height:8px; border-radius:50%; flex:none;
+         background:var(--ok); box-shadow:0 0 9px -1px var(--ok); }
+  .module.pending .dot { background:var(--warn); box-shadow:0 0 9px -1px var(--warn);
+                         animation:pulse 1.7s ease-in-out infinite; }
+  .slug { font-family:var(--font-mono); font-size:13.5px; font-weight:700; color:var(--text);
+          overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .rm { margin-left:auto; width:22px; height:22px; border-radius:6px; border:0; flex:none;
+        background:transparent; color:var(--text-faint); cursor:pointer;
+        display:grid; place-items:center; transition:all .15s ease; }
+  .rm .material-icons { font-size:17px; }
+  .rm:hover { background:rgba(248,113,113,.14); color:var(--err); }
 
-  .ctl { display:flex; align-items:center; justify-content:space-between;
-         gap:10px; padding:6px 0; }
-  .ctl + .ctl { border-top:1px solid #ffffff08; }
-  .ctl label { font-size:12px; color:var(--mute); }
-  .val { font-family:var(--mono); font-size:12.5px; color:var(--ink); }
+  .ctl { display:flex; align-items:center; justify-content:space-between; gap:10px; padding:6px 0; }
+  .ctl + .ctl { border-top:1px solid rgba(255,255,255,.05); }
+  .ctl label { font-size:12px; color:var(--text-dim); }
+  .val { font-family:var(--font-mono); font-size:12px; color:var(--text); }
 
-  .stepper { display:flex; align-items:center; gap:2px; }
-  .stepper button {
-    width:24px; height:24px; border:1px solid var(--edge); background:var(--panel-2);
-    color:var(--cool); border-radius:6px; cursor:pointer; font-size:14px;
-    line-height:1; font-family:var(--mono); transition:all .12s ease;
-  }
-  .stepper button:hover { border-color:var(--cool); }
-  .stepper .num { width:30px; text-align:center; font-family:var(--mono);
+  .stepper { display:flex; align-items:center; gap:3px; }
+  .stepper button { width:24px; height:24px; border:1px solid var(--border);
+    background:var(--surface-2); color:var(--accent-hi); border-radius:6px; cursor:pointer;
+    font-family:var(--font-mono); font-size:14px; line-height:1; transition:all .12s ease; }
+  .stepper button:hover { border-color:var(--accent-hi); }
+  .stepper .num { width:28px; text-align:center; font-family:var(--font-mono);
                   font-size:13px; font-weight:700; }
 
-  select.pick {
-    font-family:var(--mono); font-size:12px; color:var(--ink);
-    background:var(--panel-2); border:1px solid var(--edge); border-radius:6px;
-    padding:4px 8px; cursor:pointer; max-width:130px;
-  }
-  select.pick:hover { border-color:var(--cool); }
+  select.pick { font-family:var(--font-mono); font-size:12px; color:var(--text);
+    background:var(--surface-2); border:1px solid var(--border); border-radius:6px;
+    padding:4px 8px; cursor:pointer; max-width:132px; }
+  select.pick:hover { border-color:var(--accent-hi); }
 
-  .toggle {
-    width:40px; height:22px; border-radius:99px; border:1px solid var(--edge);
-    background:var(--panel-2); position:relative; cursor:pointer; flex:none;
-    transition:all .18s ease;
-  }
-  .toggle::after {
-    content:""; position:absolute; top:2px; left:2px; width:16px; height:16px;
-    border-radius:50%; background:var(--faint); transition:all .18s ease;
-  }
-  .toggle.on { background:var(--cool-dim); border-color:var(--cool); }
-  .toggle.on::after { left:20px; background:var(--cool); }
+  .toggle { width:38px; height:21px; border-radius:99px; border:1px solid var(--border);
+    background:var(--surface-2); position:relative; cursor:pointer; flex:none; transition:all .18s ease; }
+  .toggle::after { content:""; position:absolute; top:2px; left:2px; width:15px; height:15px;
+    border-radius:50%; background:var(--text-faint); transition:all .18s ease; }
+  .toggle.on { background:var(--accent-lo); border-color:var(--accent-hi); }
+  .toggle.on::after { left:19px; background:var(--accent-hi); }
 
-  .empty { font-size:13px; color:var(--faint); font-family:var(--mono);
-           padding:14px 2px; }
+  .empty { font-size:13px; color:var(--text-faint); font-family:var(--font-mono); padding:12px 2px; }
+  .empty em { color:var(--accent-hi); font-style:normal; }
 
-  /* add-menu popover */
-  .menu {
-    position:absolute; top:calc(100% + 6px); right:0; z-index:30;
-    background:var(--panel-2); border:1px solid var(--edge); border-radius:10px;
-    padding:6px; min-width:190px; box-shadow:0 20px 50px -18px #000;
-  }
-  .menu button {
-    display:block; width:100%; text-align:left; font-family:var(--mono);
-    font-size:12.5px; color:var(--ink); background:transparent; border:0;
-    padding:8px 10px; border-radius:7px; cursor:pointer;
-  }
-  .menu button:hover { background:#5cc8d714; color:var(--cool); }
-  .menu button[disabled] { color:var(--faint); cursor:default; }
+  .menu { position:absolute; top:calc(100% + 6px); right:0; z-index:30;
+    background:var(--surface-2); border:1px solid var(--border-hi); border-radius:10px;
+    padding:6px; min-width:196px; box-shadow:0 24px 54px -20px #000; }
+  .menu button { display:block; width:100%; text-align:left; font-family:var(--font-mono);
+    font-size:12.5px; color:var(--text); background:transparent; border:0; padding:8px 10px;
+    border-radius:7px; cursor:pointer; }
+  .menu button:hover { background:var(--accent-lo); color:var(--accent-hi); }
+  .menu button[disabled] { color:var(--text-faint); cursor:default; }
   .menu button[disabled]:hover { background:transparent; }
 
-  #toast {
-    position:fixed; left:50%; bottom:26px; transform:translateX(-50%) translateY(20px);
-    background:var(--panel-2); border:1px solid var(--edge); border-radius:10px;
-    padding:11px 18px; font-family:var(--mono); font-size:12.5px; color:var(--ink);
-    opacity:0; pointer-events:none; transition:all .25s ease; z-index:40;
-  }
+  #toast { position:fixed; left:50%; bottom:26px; transform:translateX(-50%) translateY(20px);
+    background:var(--surface-2); border:1px solid var(--border-hi); border-radius:10px;
+    padding:11px 18px; font-family:var(--font-mono); font-size:12.5px; color:var(--text);
+    opacity:0; pointer-events:none; transition:all .25s ease; z-index:40; }
   #toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
-  #toast.err { border-color:var(--warn); color:#ffb3ae; }
-  #toast.ok  { border-color:var(--live); color:#a9f0cf; }
+  #toast.err { border-color:var(--err); color:#fecaca; }
+  #toast.ok  { border-color:var(--ok); color:#bbf7d0; }
 
-  a.rawlink { color:var(--faint); font-family:var(--mono); font-size:11px;
-              text-decoration:none; border-bottom:1px dotted var(--faint); }
-  a.rawlink:hover { color:var(--cool); border-color:var(--cool); }
-
-  :focus-visible { outline:2px solid var(--cool); outline-offset:2px; }
+  :focus-visible { outline:2px solid var(--accent-hi); outline-offset:2px; }
   @media (prefers-reduced-motion:reduce){ *{animation:none !important; transition:none !important;} }
   @keyframes pulse { 0%,100%{opacity:1;} 50%{opacity:.35;} }
 </style>
 </head>
 <body>
 <header>
-  <div class="mark">
-    <div class="glyph">◧</div>
-    <div>
-      <h1>AInBox engine</h1>
-      <div class="eyebrow">loadout · fixed residency</div>
-    </div>
+  <img class="brandmark" src="/syalia-ui/favicon.svg" alt="SYALIA"/>
+  <div class="titles">
+    <h1><span class="syalia-wordmark">SYALIA</span><span class="syalia-appname">· Engine</span></h1>
+    <div class="eyebrow">loadout · fixed residency</div>
   </div>
   <div class="spacer"></div>
   <div class="live-count" id="livecount">—</div>
   <button class="relaunch" id="relaunch" disabled>
+    <span class="material-icons" id="ricon">bolt</span>
     <span id="rlabel">Live</span><span class="n" id="rn" hidden>0</span>
   </button>
 </header>
@@ -218,7 +157,6 @@ const META = {
   tts:        {kind:"TTS",        desc:"text to speech"},
   images:     {kind:"Images",     desc:"image generation"},
 };
-// catalog of baked models the operator can raise (grounded in the recipe)
 const CATALOG = {
   llm: { "qwen3.5-9b":{}, "qwen3.5-4b":{}, "qwen3.5-2b":{} },
   embeddings: { "text-embedding-minilm":{model:"paraphrase-multilingual-MiniLM-L12-v2"} },
@@ -229,12 +167,10 @@ const CATALOG = {
 const CTX = [2048, 4096, 8192, 16384];
 const QUANT = ["fp8","bf16"];
 
-let state = blank();   // working copy (control-shape)
-let live = blank();    // last-applied snapshot
+let state = blank(), live = blank();
 function blank(){ return {llm:[],embeddings:[],stt:[],tts:[],images:[]}; }
 const $ = s => document.querySelector(s);
 
-// ---- normalize raw spec (from /api/spec) -> control-shape ----
 function fromRaw(raw){
   const s = blank();
   (raw.llm||[]).forEach(n => s.llm.push({slug:n.slug, replicas:n.replicas??1,
@@ -246,84 +182,68 @@ function fromRaw(raw){
     quant:n.quant||"fp8", steps:n.steps??4}));
   return s;
 }
-// ---- serialize control-shape -> raw spec (for POST) ----
 function toRaw(s){
   const raw = {gateway:{port:8080}};
   raw.llm = s.llm.map(m => ({slug:m.slug, replicas:m.replicas, n_ctx:m.n_ctx,
     n_gpu_layers:-1, flash_attn:m.flash_attn}));
   raw.embeddings = s.embeddings.map(m => ({slug:m.slug,
     model:CATALOG.embeddings[m.slug]?.model||m.slug, device:m.device}));
-  raw.stt = s.stt.map(m => ({slug:m.slug, model:CATALOG.stt[m.slug]?.model||"small",
-    device:m.device}));
+  raw.stt = s.stt.map(m => ({slug:m.slug, model:CATALOG.stt[m.slug]?.model||"small", device:m.device}));
   raw.tts = s.tts.map(m => ({slug:m.slug, model:"kokoro", lang_code:m.voice[0], voice:m.voice}));
   raw.images = s.images.map(m => ({slug:m.slug,
     model:CATALOG.images[m.slug]?.model||m.slug, offload:m.offload, quant:m.quant, steps:m.steps}));
   return raw;
 }
 const eq = (a,b) => JSON.stringify(a)===JSON.stringify(b);
-function moduleState(mod, slug){ return (mod||[]).find(m=>m.slug===slug); }
-function isPending(kind, m){
-  const l = moduleState(live[kind], m.slug);
-  return !l || !eq(l, m);
-}
+const moduleState = (mod, slug) => (mod||[]).find(m=>m.slug===slug);
+function isPending(kind, m){ const l = moduleState(live[kind], m.slug); return !l || !eq(l, m); }
 function changeCount(){
   let n = 0;
   for(const k of ORDER){
     for(const m of state[k]) if(isPending(k,m)) n++;
-    for(const l of live[k]) if(!moduleState(state[k], l.slug)) n++; // removed
+    for(const l of live[k]) if(!moduleState(state[k], l.slug)) n++;
   }
   return n;
 }
 
-// ---- render ----
 function render(){
   const board = $("#board"); board.innerHTML = "";
   for(const kind of ORDER){
     const rail = document.createElement("section"); rail.className = "rail";
     const items = Object.keys(CATALOG[kind]);
     const present = new Set(state[kind].map(m=>m.slug));
-    rail.innerHTML = `
-      <div class="rail-head">
+    rail.innerHTML = `<div class="rail-head">
         <span class="kind">${META[kind].kind}</span>
         <span class="desc">${META[kind].desc}</span>
-        <span class="count">${state[kind].length}/${items.length}</span>
-      </div>`;
-    const head = rail.querySelector(".rail-head");
+        <span class="count">${state[kind].length}/${items.length}</span></div>`;
     const add = document.createElement("button");
-    add.className = "add"; add.textContent = "+ add";
+    add.className = "add";
+    add.innerHTML = `<span class="material-icons">add</span>add`;
     add.onclick = e => openMenu(e, kind, items, present);
-    head.appendChild(add);
+    rail.querySelector(".rail-head").appendChild(add);
 
     const mods = document.createElement("div"); mods.className = "modules";
-    if(state[kind].length === 0){
-      mods.innerHTML = `<div class="empty">Nothing raised — <em>+ add</em> a model.</div>`;
-    } else {
-      state[kind].forEach((m,i) => mods.appendChild(card(kind, m, i)));
-    }
-    rail.appendChild(mods);
-    board.appendChild(rail);
+    if(state[kind].length === 0)
+      mods.innerHTML = `<div class="empty">Nothing raised — <em>add</em> a model.</div>`;
+    else state[kind].forEach((m,i) => mods.appendChild(card(kind, m, i)));
+    rail.appendChild(mods); board.appendChild(rail);
   }
   refreshBar();
 }
-
 function card(kind, m, i){
   const el = document.createElement("div");
   el.className = "module" + (isPending(kind,m) ? " pending" : "");
   const top = document.createElement("div"); top.className = "m-top";
   top.innerHTML = `<span class="dot"></span><span class="slug" title="${m.slug}">${m.slug}</span>`;
-  const rm = document.createElement("button");
-  rm.className = "rm"; rm.textContent = "×"; rm.title = "remove";
+  const rm = document.createElement("button"); rm.className = "rm"; rm.title = "remove";
+  rm.innerHTML = `<span class="material-icons">close</span>`;
   rm.onclick = () => { state[kind].splice(i,1); render(); };
-  top.appendChild(rm); el.appendChild(top);
-  BODY[kind](el, m);
-  return el;
+  top.appendChild(rm); el.appendChild(top); BODY[kind](el, m); return el;
 }
-
-// per-modality control bodies
 const BODY = {
   llm(el,m){
     el.appendChild(stepper("replicas", m.replicas, 1, 4, v=>{m.replicas=v;render();}));
-    el.appendChild(select("context", CTX, m.n_ctx, v=>{m.n_ctx=+v;render();}, x=>x));
+    el.appendChild(select("context", CTX, m.n_ctx, v=>{m.n_ctx=+v;render();}));
     el.appendChild(toggle("flash-attn", m.flash_attn, v=>{m.flash_attn=v;render();}));
   },
   embeddings(el,m){
@@ -335,8 +255,7 @@ const BODY = {
     el.appendChild(ro("model", CATALOG.stt[m.slug]?.model || "—"));
   },
   tts(el,m){
-    const voices = CATALOG.tts.kokoro.voices;
-    el.appendChild(select("voice", voices, m.voice, v=>{m.voice=v;render();}));
+    el.appendChild(select("voice", CATALOG.tts.kokoro.voices, m.voice, v=>{m.voice=v;render();}));
     el.appendChild(ro("lang", m.voice[0]));
   },
   images(el,m){
@@ -345,8 +264,6 @@ const BODY = {
     el.appendChild(stepper("steps", m.steps, 1, 8, v=>{m.steps=v;render();}));
   },
 };
-
-// ---- control factories ----
 function row(label){ const r=document.createElement("div"); r.className="ctl";
   r.innerHTML=`<label>${label}</label>`; return r; }
 function ro(label,v){ const r=row(label); const s=document.createElement("span");
@@ -359,11 +276,10 @@ function stepper(label,v,min,max,cb){
   dec.onclick=()=>cb(Math.max(min,v-1)); inc.onclick=()=>cb(Math.min(max,v+1));
   w.append(dec,num,inc); r.appendChild(w); return r;
 }
-function select(label,opts,val,cb,fmt){
+function select(label,opts,val,cb){
   const r=row(label); const sel=document.createElement("select"); sel.className="pick";
-  opts.forEach(o=>{ const op=document.createElement("option");
-    op.value=o; op.textContent=fmt?fmt(o):o; if(String(o)===String(val)) op.selected=true;
-    sel.appendChild(op); });
+  opts.forEach(o=>{ const op=document.createElement("option"); op.value=o; op.textContent=o;
+    if(String(o)===String(val)) op.selected=true; sel.appendChild(op); });
   sel.onchange=()=>cb(sel.value); r.appendChild(sel); return r;
 }
 function toggle(label,on,cb){
@@ -374,15 +290,13 @@ function toggle(label,on,cb){
   t.onkeydown=e=>{ if(e.key===" "||e.key==="Enter"){e.preventDefault();flip();} };
   r.appendChild(t); return r;
 }
-
-// ---- add menu ----
 function openMenu(e, kind, items, present){
   e.stopPropagation(); closeMenu();
   const menu=document.createElement("div"); menu.className="menu";
   items.forEach(slug=>{
-    const b=document.createElement("button"); b.textContent=slug;
+    const b=document.createElement("button");
     if(present.has(slug)){ b.disabled=true; b.textContent=slug+"  · raised"; }
-    else b.onclick=()=>{ addModule(kind,slug); closeMenu(); render(); };
+    else { b.textContent=slug; b.onclick=()=>{ addModule(kind,slug); closeMenu(); render(); }; }
     menu.appendChild(b);
   });
   e.currentTarget.appendChild(menu);
@@ -390,37 +304,33 @@ function openMenu(e, kind, items, present){
 }
 function closeMenu(){ document.querySelectorAll(".menu").forEach(m=>m.remove()); }
 function addModule(kind, slug){
-  const d = {
+  state[kind].push({
     llm:{slug, replicas:1, n_ctx:4096, flash_attn:false},
     embeddings:{slug, device:"cuda"},
     stt:{slug, device:"cuda"},
     tts:{slug, voice:CATALOG.tts.kokoro.voices[0]},
     images:{slug, offload:false, quant:"fp8", steps:4},
-  }[kind];
-  state[kind].push(d);
+  }[kind]);
 }
-
-// ---- relaunch bar ----
 function refreshBar(){
   const n = changeCount();
-  const btn=$("#relaunch"), rl=$("#rlabel"), rn=$("#rn");
+  const btn=$("#relaunch"), rl=$("#rlabel"), rn=$("#rn"), ic=$("#ricon");
   const liveN = ORDER.reduce((a,k)=>a+live[k].length,0);
   $("#livecount").innerHTML = `<b>${liveN}</b> models live · ${ORDER.length} modalities`;
-  if(n>0){ btn.classList.add("dirty"); btn.disabled=false;
+  if(n>0){ btn.classList.add("dirty"); btn.disabled=false; ic.textContent="restart_alt";
     rl.textContent="Relaunch"; rn.hidden=false; rn.textContent=n; }
-  else { btn.classList.remove("dirty"); btn.disabled=true;
+  else { btn.classList.remove("dirty"); btn.disabled=true; ic.textContent="bolt";
     rl.textContent="Live"; rn.hidden=true; }
 }
 async function relaunch(){
-  const btn=$("#relaunch");
-  if(btn.disabled) return;
+  const btn=$("#relaunch"); if(btn.disabled) return;
   if(state.llm.length===0){ toast("Raise at least one language model.","err"); return; }
   btn.classList.add("busy"); btn.disabled=true; $("#rlabel").textContent="Relaunching…";
   try{
     const r = await fetch("/api/spec",{method:"POST",headers:{"content-type":"application/json"},
       body:JSON.stringify(toRaw(state))});
     const data = await r.json();
-    if(!r.ok){ toast(data.error||"relaunch failed","err"); }
+    if(!r.ok) toast(data.error||"relaunch failed","err");
     else { live = JSON.parse(JSON.stringify(state)); toast("Relaunched.","ok"); }
   }catch(err){ toast("network error","err"); }
   btn.classList.remove("busy"); render();
@@ -429,14 +339,11 @@ function toast(msg,kind){
   const t=$("#toast"); t.textContent=msg; t.className="show "+(kind||"");
   clearTimeout(toast._t); toast._t=setTimeout(()=>t.className="",2600);
 }
-
-// ---- boot ----
 $("#relaunch").onclick = relaunch;
 (async function boot(){
-  try{
-    const raw = await (await fetch("/api/spec")).json();
-    state = fromRaw(raw); live = JSON.parse(JSON.stringify(state));
-  }catch(e){ /* empty board */ }
+  try{ const raw = await (await fetch("/api/spec")).json();
+    state = fromRaw(raw); live = JSON.parse(JSON.stringify(state)); }
+  catch(e){}
   render();
 })();
 </script>
