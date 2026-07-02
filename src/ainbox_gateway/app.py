@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import asyncio
+import base64
 import json
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -12,8 +13,9 @@ from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from starlette.background import BackgroundTask
 
 from .embeddings import Embedder, build_embedders
+from .images import Generator, build_generators
 from .router import Router, UnknownModel
-from .spec import EmbeddingsNode, Spec, SttNode, TtsNode, load_spec, SpecError
+from .spec import EmbeddingsNode, ImagesNode, Spec, SttNode, TtsNode, load_spec, SpecError
 from .stt import Transcriber, build_transcribers
 from .tts import Synthesizer, build_synthesizers
 from .supervisor import Supervisor
@@ -36,15 +38,21 @@ def _default_synthesizer_factory(node: TtsNode) -> Synthesizer:
     return KokoroSynthesizer(node)
 
 
+def _default_generator_factory(node: ImagesNode) -> Generator:
+    from .images import DiffusersFluxGenerator
+    return DiffusersFluxGenerator(node)
+
+
 def create_app(spec: Spec, supervisor: Supervisor,
                client: httpx.AsyncClient | None = None,
                embedder_factory=None, transcriber_factory=None,
-               synthesizer_factory=None,
+               synthesizer_factory=None, generator_factory=None,
                spec_raw: dict | None = None, spec_path: str | None = None) -> FastAPI:
     client = client or httpx.AsyncClient(timeout=None)
     embedder_factory = embedder_factory or _default_embedder_factory
     transcriber_factory = transcriber_factory or _default_transcriber_factory
     synthesizer_factory = synthesizer_factory or _default_synthesizer_factory
+    generator_factory = generator_factory or _default_generator_factory
 
     def _start(new_spec: Spec, new_raw: dict | None) -> None:
         pools = supervisor.start(new_spec)
@@ -52,6 +60,7 @@ def create_app(spec: Spec, supervisor: Supervisor,
         app.state.embedders = build_embedders(new_spec, embedder_factory)
         app.state.transcribers = build_transcribers(new_spec, transcriber_factory)
         app.state.synthesizers = build_synthesizers(new_spec, synthesizer_factory)
+        app.state.generators = build_generators(new_spec, generator_factory)
         app.state.spec = new_spec
         app.state.spec_raw = new_raw
 
@@ -65,7 +74,8 @@ def create_app(spec: Spec, supervisor: Supervisor,
         return {"llm": sorted(app.state.router.models()),
                 "embeddings": sorted(app.state.embedders),
                 "stt": sorted(app.state.transcribers),
-                "tts": sorted(app.state.synthesizers)}
+                "tts": sorted(app.state.synthesizers),
+                "images": sorted(app.state.generators)}
 
     @asynccontextmanager
     async def lifespan(app: FastAPI):
@@ -165,12 +175,39 @@ def create_app(spec: Spec, supervisor: Supervisor,
         audio = await asyncio.to_thread(synth.synthesize, text, payload.get("voice"))
         return Response(content=audio, media_type="audio/wav")
 
+    @app.post("/v1/images/generations")
+    async def images(request: Request) -> Response:
+        try:
+            payload = await request.json()
+        except Exception:
+            return JSONResponse({"error": "invalid JSON body"}, status_code=400)
+        model = payload.get("model")
+        if not model:
+            return JSONResponse({"error": "missing 'model'"}, status_code=400)
+        prompt = payload.get("prompt")
+        if not prompt:
+            return JSONResponse({"error": "missing 'prompt'"}, status_code=400)
+        gen = app.state.generators.get(model)
+        if gen is None:
+            return JSONResponse(
+                {"error": f"image model '{model}' is not raised"}, status_code=404)
+        n = int(payload.get("n", 1))
+        size = payload.get("size", "1024x1024")
+        try:
+            w, h = (int(x) for x in size.lower().split("x"))
+        except Exception:
+            return JSONResponse({"error": f"bad size '{size}'"}, status_code=400)
+        pngs = await asyncio.to_thread(gen.generate, prompt, n, w, h)
+        data = [{"b64_json": base64.b64encode(p).decode()} for p in pngs]
+        return JSONResponse({"created": 0, "data": data})
+
     @app.get("/v1/models")
     async def list_models() -> Response:
         slugs = sorted(set(_router().models())
                        | set(app.state.embedders)
                        | set(app.state.transcribers)
-                       | set(app.state.synthesizers))
+                       | set(app.state.synthesizers)
+                       | set(app.state.generators))
         data = [{"id": s, "object": "model", "owned_by": "ainbox"} for s in slugs]
         return JSONResponse({"object": "list", "data": data})
 
