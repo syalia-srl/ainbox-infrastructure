@@ -93,6 +93,24 @@ The gateway's routing/round-robin/lifespan logic is fully covered by unit tests
    # out.wav: RIFF (little-endian) data, WAVE audio
    ```
 
+## Image generation (FLUX)
+
+> FLUX wants ~16–24 GB VRAM. On a 16 GB card, raise it *instead of* the 9B, or
+> set `"offload": true` on the images node. The exact fp8 checkpoint + quant
+> config are finalized here (not on zion).
+
+1. Raise a spec with an `images` block, e.g.
+   `{"slug":"flux","model":"black-forest-labs/FLUX.1-schnell","quant":"fp8","offload":true}`.
+2. Generate:
+
+   ```bash
+   curl -s localhost:8080/v1/images/generations \
+     -H 'content-type: application/json' \
+     -d '{"model":"flux","prompt":"a red bicycle, studio photo","size":"1024x1024"}' \
+     | jq -r '.data[0].b64_json' | base64 -d > out.png && file out.png
+   # out.png: PNG image data, 1024 x 1024
+   ```
+
 ## Notes
 
 - The legacy `deploy/*.json` files (`server_ports`, `whisper_nodes`,

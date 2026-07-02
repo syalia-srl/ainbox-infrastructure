@@ -83,6 +83,14 @@ RUN jq -r '.tts_nodes[]?.model' /tmp/recipe.json | while read -r model; do \
     fi; \
 done
 
+# 6d. Pre-loading image-gen models (FLUX weights + encoders) — LARGE layer
+RUN jq -r '.image_nodes[]?.model' /tmp/recipe.json | while read -r model; do \
+    if [ -n "$model" ] && [ "$model" != "null" ]; then \
+        echo "[BUILD] Baking FLUX image model: $model..."; \
+        python3 -c "from diffusers import FluxPipeline; import torch; FluxPipeline.from_pretrained('$model', torch_dtype=torch.bfloat16)"; \
+    fi; \
+done
+
 # 7. Runtime Assets
 COPY entrypoint.sh .
 RUN chmod +x entrypoint.sh && rm /tmp/recipe.json && mkdir -p /app/config

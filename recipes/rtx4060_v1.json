@@ -19,6 +19,11 @@
       "model": "kokoro"
     }
   ],
+  "image_nodes": [
+    {
+      "model": "black-forest-labs/FLUX.1-schnell"
+    }
+  ],
   "llama_node": [
     {
       "url": "https://huggingface.co/unsloth/Qwen3.5-9B-GGUF/resolve/main/Qwen3.5-9B-Q4_K_M.gguf?download=true",
