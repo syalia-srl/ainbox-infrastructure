@@ -76,7 +76,6 @@ RUN jq -r '.embedding_nodes[]?.model' /tmp/recipe.json | while read -r model; do
 done
 
 # 7. Runtime Assets
-COPY whisper_api.py .
 COPY entrypoint.sh .
 RUN chmod +x entrypoint.sh && rm /tmp/recipe.json && mkdir -p /app/config
 

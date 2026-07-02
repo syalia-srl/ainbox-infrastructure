@@ -69,6 +69,17 @@ The gateway's routing/round-robin/lifespan logic is fully covered by unit tests
    MiniLM (`paraphrase-multilingual-MiniLM-L12-v2`). Cosine similarity must be
    ≈1.0 (diff < 1e-3), confirming stored magpie/superbot vectors stay valid.
 
+## STT
+
+1. Raise a spec with an `stt` block, e.g. `{"slug":"whisper-small","model":"small"}`.
+2. Transcribe:
+
+   ```bash
+   curl -s localhost:8080/v1/audio/transcriptions \
+     -F model=whisper-small -F file=@sample.wav | jq
+   # {"text":"..."}
+   ```
+
 ## Notes
 
 - The legacy `deploy/*.json` files (`server_ports`, `whisper_nodes`,

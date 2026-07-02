@@ -19,7 +19,7 @@ IMAGE_TAG=${2:-$(basename "$RECIPE_PATH" .json)} # Use 2nd arg or fallback to fi
 
 # 2. Context Integrity Check
 # README.md is no longer required for the build context
-REQUIRED_FILES=("Dockerfile" "whisper_api.py" "entrypoint.sh" "pyproject.toml")
+REQUIRED_FILES=("Dockerfile" "entrypoint.sh" "pyproject.toml")
 for f in "${REQUIRED_FILES[@]}"; do
     if [ ! -f "$BUILD_DIR/$f" ]; then
         echo "[ERROR] Missing required file in $BUILD_DIR: $f"
