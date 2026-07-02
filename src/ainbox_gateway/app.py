@@ -46,6 +46,12 @@ def create_app(router: Router, client: httpx.AsyncClient) -> FastAPI:
     async def completions(request: Request) -> Response:
         return await _proxy(request, "/v1/completions")
 
+    @app.get("/v1/models")
+    async def list_models() -> Response:
+        data = [{"id": s, "object": "model", "owned_by": "ainbox"}
+                for s in router.models()]
+        return JSONResponse({"object": "list", "data": data})
+
     app.state.router = router
     app.state.client = client
     return app

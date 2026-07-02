@@ -46,3 +46,15 @@ async def test_missing_model_returns_400():
     async with httpx.AsyncClient(transport=transport, base_url="http://gw") as c:
         r = await c.post("/v1/chat/completions", json={"messages": []})
     assert r.status_code == 400
+
+
+@pytest.mark.asyncio
+async def test_models_endpoint_lists_slugs():
+    app = _app_and_client()
+    transport = httpx.ASGITransport(app=app)
+    async with httpx.AsyncClient(transport=transport, base_url="http://gw") as c:
+        r = await c.get("/v1/models")
+    body = r.json()
+    assert body["object"] == "list"
+    assert [m["id"] for m in body["data"]] == ["a"]
+    assert body["data"][0]["object"] == "model"
