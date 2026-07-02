@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>ainbox · inference engine</title>
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 15px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace;
+         background: #0e1116; color: #d7dde5; }
+  header { padding: 20px 28px; border-bottom: 1px solid #222a35;
+           display: flex; align-items: baseline; gap: 14px; }
+  header h1 { margin: 0; font-size: 17px; letter-spacing: .5px; }
+  header .tag { color: #6b7684; font-size: 12px; }
+  main { display: grid; grid-template-columns: 1fr 320px; gap: 24px; padding: 24px 28px; }
+  label { display: block; color: #8b95a3; font-size: 12px; margin-bottom: 8px;
+          text-transform: uppercase; letter-spacing: .8px; }
+  textarea { width: 100%; height: 420px; resize: vertical; background: #11161d;
+             color: #cfe3ff; border: 1px solid #222a35; border-radius: 8px;
+             padding: 14px; font: 13px/1.55 ui-monospace, monospace; }
+  button { margin-top: 14px; background: #2f6feb; color: #fff; border: 0;
+           border-radius: 7px; padding: 10px 18px; font-size: 14px; cursor: pointer; }
+  button:hover { background: #3b7bff; }
+  aside { background: #11161d; border: 1px solid #222a35; border-radius: 8px; padding: 16px; }
+  aside h2 { margin: 0 0 12px; font-size: 12px; text-transform: uppercase;
+             letter-spacing: .8px; color: #8b95a3; }
+  .kind { margin-bottom: 14px; }
+  .kind b { color: #7ee0a2; font-size: 12px; }
+  .pill { display: inline-block; background: #1b2430; border: 1px solid #2a3646;
+          border-radius: 999px; padding: 3px 10px; margin: 4px 4px 0 0; font-size: 12px; }
+  .muted { color: #58616e; }
+  #msg { margin-top: 12px; font-size: 13px; min-height: 18px; }
+  .ok { color: #7ee0a2; } .err { color: #ff8a8a; }
+</style>
+</head>
+<body>
+<header>
+  <h1>ainbox · inference engine</h1>
+  <span class="tag">pure-OpenAI gateway · fixed residency · relaunch to change</span>
+</header>
+<main>
+  <section>
+    <label for="spec">raise-spec (json)</label>
+    <textarea id="spec" spellcheck="false"></textarea>
+    <button id="apply">Apply &amp; Relaunch</button>
+    <div id="msg"></div>
+  </section>
+  <aside>
+    <h2>Raised now</h2>
+    <div id="status"><span class="muted">loading…</span></div>
+  </aside>
+</main>
+<script>
+const $ = s => document.querySelector(s);
+function renderStatus(st) {
+  const kind = (name, arr) => `<div class="kind"><b>${name}</b><br/>` +
+    (arr.length ? arr.map(x => `<span class="pill">${x}</span>`).join("")
+                : `<span class="muted">none</span>`) + `</div>`;
+  $("#status").innerHTML = kind("llm", st.llm) + kind("embeddings", st.embeddings) + kind("stt", st.stt);
+}
+async function load() {
+  $("#spec").value = JSON.stringify(await (await fetch("/api/spec")).json(), null, 2);
+  renderStatus(await (await fetch("/api/status")).json());
+}
+$("#apply").onclick = async () => {
+  const msg = $("#msg"); msg.textContent = "relaunching…"; msg.className = "";
+  let body;
+  try { body = JSON.parse($("#spec").value); }
+  catch (e) { msg.textContent = "invalid JSON: " + e.message; msg.className = "err"; return; }
+  const r = await fetch("/api/spec", {method: "POST", headers: {"content-type": "application/json"},
+                                      body: JSON.stringify(body)});
+  const data = await r.json();
+  if (r.ok) { msg.textContent = "relaunched ✓"; msg.className = "ok"; renderStatus(data.status); }
+  else { msg.textContent = data.error || "error"; msg.className = "err"; }
+};
+load();
+</script>
+</body>
+</html>

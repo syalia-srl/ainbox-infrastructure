@@ -217,6 +217,19 @@ async def test_apply_invalid_spec_400_and_keeps_running_set():
 
 
 @pytest.mark.asyncio
+async def test_root_serves_ui():
+    app = create_app(Spec(gateway_port=8080, llm=[LlmNode(slug="a")]),
+                     FakeSupervisor(), embedder_factory=_FakeEmbedder,
+                     transcriber_factory=_FakeTranscriber,
+                     spec_raw={"gateway": {"port": 8080}, "llm": [{"slug": "a"}]})
+    async with _client(app) as c:
+        r = await c.get("/")
+    assert r.status_code == 200
+    assert "text/html" in r.headers["content-type"]
+    assert "ainbox" in r.text.lower()
+
+
+@pytest.mark.asyncio
 async def test_get_spec_returns_raw():
     raw = {"gateway": {"port": 8080}, "llm": [{"slug": "a"}]}
     app = create_app(Spec(gateway_port=8080, llm=[LlmNode(slug="a")]),
