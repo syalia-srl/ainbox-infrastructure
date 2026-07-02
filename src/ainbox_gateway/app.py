@@ -13,8 +13,9 @@ from starlette.background import BackgroundTask
 
 from .embeddings import Embedder, build_embedders
 from .router import Router, UnknownModel
-from .spec import EmbeddingsNode, Spec, SttNode, load_spec, SpecError
+from .spec import EmbeddingsNode, Spec, SttNode, TtsNode, load_spec, SpecError
 from .stt import Transcriber, build_transcribers
+from .tts import Synthesizer, build_synthesizers
 from .supervisor import Supervisor
 
 _UI_FILE = Path(__file__).parent / "static" / "ui.html"
@@ -30,19 +31,27 @@ def _default_transcriber_factory(node: SttNode) -> Transcriber:
     return FasterWhisperTranscriber(node)
 
 
+def _default_synthesizer_factory(node: TtsNode) -> Synthesizer:
+    from .tts import KokoroSynthesizer
+    return KokoroSynthesizer(node)
+
+
 def create_app(spec: Spec, supervisor: Supervisor,
                client: httpx.AsyncClient | None = None,
                embedder_factory=None, transcriber_factory=None,
+               synthesizer_factory=None,
                spec_raw: dict | None = None, spec_path: str | None = None) -> FastAPI:
     client = client or httpx.AsyncClient(timeout=None)
     embedder_factory = embedder_factory or _default_embedder_factory
     transcriber_factory = transcriber_factory or _default_transcriber_factory
+    synthesizer_factory = synthesizer_factory or _default_synthesizer_factory
 
     def _start(new_spec: Spec, new_raw: dict | None) -> None:
         pools = supervisor.start(new_spec)
         app.state.router = Router(pools)
         app.state.embedders = build_embedders(new_spec, embedder_factory)
         app.state.transcribers = build_transcribers(new_spec, transcriber_factory)
+        app.state.synthesizers = build_synthesizers(new_spec, synthesizer_factory)
         app.state.spec = new_spec
         app.state.spec_raw = new_raw
 
@@ -55,7 +64,8 @@ def create_app(spec: Spec, supervisor: Supervisor,
     def _status() -> dict:
         return {"llm": sorted(app.state.router.models()),
                 "embeddings": sorted(app.state.embedders),
-                "stt": sorted(app.state.transcribers)}
+                "stt": sorted(app.state.transcribers),
+                "tts": sorted(app.state.synthesizers)}
 
     @asynccontextmanager
     async def lifespan(app: FastAPI):
@@ -136,11 +146,31 @@ def create_app(spec: Spec, supervisor: Supervisor,
         text = await asyncio.to_thread(transcriber.transcribe, audio, language)
         return JSONResponse({"text": text})
 
+    @app.post("/v1/audio/speech")
+    async def speech(request: Request) -> Response:
+        try:
+            payload = await request.json()
+        except Exception:
+            return JSONResponse({"error": "invalid JSON body"}, status_code=400)
+        model = payload.get("model")
+        if not model:
+            return JSONResponse({"error": "missing 'model'"}, status_code=400)
+        text = payload.get("input")
+        if not text:
+            return JSONResponse({"error": "missing 'input'"}, status_code=400)
+        synth = app.state.synthesizers.get(model)
+        if synth is None:
+            return JSONResponse(
+                {"error": f"tts model '{model}' is not raised"}, status_code=404)
+        audio = await asyncio.to_thread(synth.synthesize, text, payload.get("voice"))
+        return Response(content=audio, media_type="audio/wav")
+
     @app.get("/v1/models")
     async def list_models() -> Response:
         slugs = sorted(set(_router().models())
                        | set(app.state.embedders)
-                       | set(app.state.transcribers))
+                       | set(app.state.transcribers)
+                       | set(app.state.synthesizers))
         data = [{"id": s, "object": "model", "owned_by": "ainbox"} for s in slugs]
         return JSONResponse({"object": "list", "data": data})
 

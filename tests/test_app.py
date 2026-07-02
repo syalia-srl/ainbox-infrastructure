@@ -6,7 +6,7 @@ import pytest
 import respx
 from asgi_lifespan import LifespanManager
 from ainbox_gateway.app import create_app
-from ainbox_gateway.spec import Spec, LlmNode, EmbeddingsNode, SttNode
+from ainbox_gateway.spec import Spec, LlmNode, EmbeddingsNode, SttNode, TtsNode
 from ainbox_gateway.supervisor import build_pools
 
 
@@ -169,6 +169,53 @@ async def test_models_union_includes_stt():
     assert [m["id"] for m in r.json()["data"]] == ["a", "emb", "whisper-small"]
 
 
+class _FakeSynth:
+    def __init__(self, node):
+        self.slug = node.slug
+
+    def synthesize(self, text, voice=None):
+        return f"WAV[{text}|{voice}]".encode()
+
+
+def _app_with_tts():
+    spec = Spec(gateway_port=8080, llm=[LlmNode(slug="a", replicas=2)],
+                tts=[TtsNode(slug="voice", model="kokoro")])
+    return create_app(spec, FakeSupervisor(), embedder_factory=_FakeEmbedder,
+                      transcriber_factory=_FakeTranscriber,
+                      synthesizer_factory=_FakeSynth)
+
+
+@pytest.mark.asyncio
+async def test_speech_returns_wav_bytes():
+    async with _client(_app_with_tts()) as c:
+        r = await c.post("/v1/audio/speech",
+                         json={"model": "voice", "input": "hola", "voice": "ef_dora"})
+    assert r.status_code == 200
+    assert "audio/wav" in r.headers["content-type"]
+    assert r.content == b"WAV[hola|ef_dora]"
+
+
+@pytest.mark.asyncio
+async def test_speech_unknown_model_404():
+    async with _client(_app_with_tts()) as c:
+        r = await c.post("/v1/audio/speech", json={"model": "nope", "input": "x"})
+    assert r.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_speech_missing_input_400():
+    async with _client(_app_with_tts()) as c:
+        r = await c.post("/v1/audio/speech", json={"model": "voice"})
+    assert r.status_code == 400
+
+
+@pytest.mark.asyncio
+async def test_models_union_includes_tts():
+    async with _client(_app_with_tts()) as c:
+        r = await c.get("/v1/models")
+    assert [m["id"] for m in r.json()["data"]] == ["a", "voice"]
+
+
 @pytest.mark.asyncio
 async def test_lifespan_starts_and_stops_supervisor():
     spec = Spec(gateway_port=8080, llm=[LlmNode(slug="a", replicas=2)])
@@ -199,7 +246,7 @@ async def test_apply_new_spec_relaunches_registries(tmp_path):
         r = await c.post("/api/spec", json=new_raw)
         assert r.status_code == 200
         st = (await c.get("/api/status")).json()
-    assert st == {"llm": ["b"], "embeddings": [], "stt": ["w"]}
+    assert st == {"llm": ["b"], "embeddings": [], "stt": ["w"], "tts": []}
     assert json.loads(path.read_text())["llm"][0]["slug"] == "b"
 
 
