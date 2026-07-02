@@ -265,10 +265,14 @@ layer so the blob-cache delta still moves only what changed.
 Designed into the interface now, built later. Each is "add a backend + wire its
 route"; nothing about the gateway, spec, or round-robin changes.
 
-- **TTS — `POST /v1/audio/speech`.** A speech runtime (candidate: Kokoro for
-  quality/size, Piper for lightweight, XTTS for cloning — decided in its own
-  spec). Baked voices declared in the recipe; raised via a `tts` block in the
-  raise-spec. Pairs with whisper so the suite can speak, not only listen.
+- **TTS — `POST /v1/audio/speech`.** Runtime **decided: Kokoro-82M** (Apache
+  2.0 → commercial-safe for the appliance; multilingual incl. Spanish; ~1 GB /
+  2–3 GB VRAM → bakeable; in-process Python lib like fastembed/faster-whisper;
+  proven OpenAI `/v1/audio/speech` mapping). XTTS-v2 rejected (CC-BY-NC
+  non-commercial); Chatterbox/Fish deferred (voice-cloning not needed for v1).
+  Baked via the recipe (`tts_nodes`); raised via a `tts` block. Needs
+  `espeak-ng` in the image. Pairs with whisper so the suite can speak, not only
+  listen. **Built** (own plan) as the 4th in-process backend.
 - **Image generation — `POST /v1/images/generations`.** FLUX (schnell/dev) via
   a diffusion runtime (ComfyUI or `diffusers`) fronted to the OpenAI images
   shape. Weights baked via the recipe; raised via an `images` block. Adds a 4th
