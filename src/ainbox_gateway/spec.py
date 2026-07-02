@@ -35,10 +35,19 @@ class EmbeddingsNode:
 
 
 @dataclass
+class SttNode:
+    slug: str
+    model: str
+    device: str = "cuda"
+    compute_type: str = "float16"
+
+
+@dataclass
 class Spec:
     gateway_port: int
     llm: list[LlmNode]
     embeddings: list[EmbeddingsNode] = field(default_factory=list)
+    stt: list[SttNode] = field(default_factory=list)
 
 
 def _load_node(raw: dict) -> LlmNode:
@@ -64,6 +73,14 @@ def _load_embeddings(raw: dict) -> EmbeddingsNode:
                           device=raw.get("device", "cuda"))
 
 
+def _load_stt(raw: dict) -> SttNode:
+    if "slug" not in raw or "model" not in raw:
+        raise SpecError("stt node needs 'slug' and 'model'")
+    return SttNode(slug=raw["slug"], model=raw["model"],
+                   device=raw.get("device", "cuda"),
+                   compute_type=raw.get("compute_type", "float16"))
+
+
 def load_spec(data: dict) -> Spec:
     gateway = data.get("gateway")
     if not gateway or "port" not in gateway:
@@ -75,4 +92,5 @@ def load_spec(data: dict) -> Spec:
         gateway_port=gateway["port"],
         llm=[_load_node(n) for n in raw_llm],
         embeddings=[_load_embeddings(e) for e in data.get("embeddings", [])],
+        stt=[_load_stt(s) for s in data.get("stt", [])],
     )

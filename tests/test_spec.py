@@ -1,6 +1,6 @@
 import pytest
 from ainbox_gateway.spec import (
-    load_spec, Spec, LlmNode, LoraSpec, EmbeddingsNode, SpecError)
+    load_spec, Spec, LlmNode, LoraSpec, EmbeddingsNode, SttNode, SpecError)
 
 
 def test_minimal_spec():
@@ -53,3 +53,21 @@ def test_embeddings_node_missing_model_raises():
     with pytest.raises(SpecError):
         load_spec({"gateway": {"port": 8080}, "llm": [{"slug": "a"}],
                    "embeddings": [{"slug": "emb"}]})
+
+
+def test_stt_optional_defaults_empty():
+    spec = load_spec({"gateway": {"port": 8080}, "llm": [{"slug": "a"}]})
+    assert spec.stt == []
+
+
+def test_stt_parsed():
+    spec = load_spec({"gateway": {"port": 8080}, "llm": [{"slug": "a"}],
+                      "stt": [{"slug": "w", "model": "small"}]})
+    assert spec.stt == [SttNode(slug="w", model="small", device="cuda",
+                                compute_type="float16")]
+
+
+def test_stt_node_missing_model_raises():
+    with pytest.raises(SpecError):
+        load_spec({"gateway": {"port": 8080}, "llm": [{"slug": "a"}],
+                   "stt": [{"slug": "w"}]})
