@@ -61,9 +61,19 @@ RUN jq -r '.whisper_nodes[].model' /tmp/recipe.json | while read -r model; do \
     fi; \
 done
 
-# 6. Gateway package — the pure-OpenAI front door + supervisor
+# 6. Gateway package — the pure-OpenAI front door + supervisor.
+# Installed WITH the [gpu] extra (fastembed-gpu) so embeddings run on CUDA and
+# so fastembed is present for the embedding-bake step below.
 COPY gateway /app/gateway
-RUN uv pip install --system /app/gateway
+RUN uv pip install --system '/app/gateway[gpu]'
+
+# 6b. Pre-loading embedding models defined in the recipe (fastembed ONNX cache)
+RUN jq -r '.embedding_nodes[]?.model' /tmp/recipe.json | while read -r model; do \
+    if [ -n "$model" ] && [ "$model" != "null" ]; then \
+        echo "[BUILD] Baking embedding model: $model..."; \
+        python3 -c "from fastembed import TextEmbedding; TextEmbedding(model_name='$model')"; \
+    fi; \
+done
 
 # 7. Runtime Assets
 COPY whisper_api.py .

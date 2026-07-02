@@ -53,6 +53,22 @@ The gateway's routing/round-robin/lifespan logic is fully covered by unit tests
    docker logs superbot_engine_gpu 2>&1 | grep -E ':9000|:9001'
    ```
 
+## Embeddings (no-reindex equivalence)
+
+1. Raise a spec with an `embeddings` block (see `deploy/example.json`).
+2. Length check:
+
+   ```bash
+   curl -s localhost:8080/v1/embeddings -H 'content-type: application/json' \
+     -d '{"model":"text-embedding-minilm","input":["hola mundo"]}' | jq '.data[0].embedding | length'
+   # 384
+   ```
+
+3. **No-reindex check (GPU):** embed a fixture string via this endpoint and
+   compare against the same string embedded by the apps' current CPU fastembed
+   MiniLM (`paraphrase-multilingual-MiniLM-L12-v2`). Cosine similarity must be
+   ≈1.0 (diff < 1e-3), confirming stored magpie/superbot vectors stay valid.
+
 ## Notes
 
 - The legacy `deploy/*.json` files (`server_ports`, `whisper_nodes`,

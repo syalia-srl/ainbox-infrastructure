@@ -9,6 +9,11 @@
       "alias": "standard_stt"
     }
   ],
+  "embedding_nodes": [
+    {
+      "model": "paraphrase-multilingual-MiniLM-L12-v2"
+    }
+  ],
   "llama_node": [
     {
       "url": "https://huggingface.co/unsloth/Qwen3.5-9B-GGUF/resolve/main/Qwen3.5-9B-Q4_K_M.gguf?download=true",
@@ -21,10 +26,6 @@
     {
       "url": "https://huggingface.co/unsloth/Qwen3.5-2B-GGUF/resolve/main/Qwen3.5-2B-Q4_K_M.gguf?download=true",
       "alias": "qwen3.5-2b"
-    },
-    {
-      "url": "https://huggingface.co/keisuke-miyako/multilingual-e5-small-gguf-q8_0/resolve/main/multilingual-e5-small-Q8_0.gguf",
-      "alias": "e5-small"
     }
   ]
 }
