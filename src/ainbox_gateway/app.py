@@ -5,13 +5,14 @@ import asyncio
 from contextlib import asynccontextmanager
 
 import httpx
-from fastapi import FastAPI, Request, Response
+from fastapi import FastAPI, File, Form, Request, Response, UploadFile
 from fastapi.responses import JSONResponse, StreamingResponse
 from starlette.background import BackgroundTask
 
 from .embeddings import Embedder, build_embedders
 from .router import Router, UnknownModel
-from .spec import EmbeddingsNode, Spec
+from .spec import EmbeddingsNode, Spec, SttNode
+from .stt import Transcriber, build_transcribers
 from .supervisor import Supervisor
 
 
@@ -20,17 +21,24 @@ def _default_embedder_factory(node: EmbeddingsNode) -> Embedder:
     return FastEmbedEmbedder(node)
 
 
+def _default_transcriber_factory(node: SttNode) -> Transcriber:
+    from .stt import FasterWhisperTranscriber
+    return FasterWhisperTranscriber(node)
+
+
 def create_app(spec: Spec, supervisor: Supervisor,
                client: httpx.AsyncClient | None = None,
-               embedder_factory=None) -> FastAPI:
+               embedder_factory=None, transcriber_factory=None) -> FastAPI:
     client = client or httpx.AsyncClient(timeout=None)
     embedder_factory = embedder_factory or _default_embedder_factory
+    transcriber_factory = transcriber_factory or _default_transcriber_factory
 
     @asynccontextmanager
     async def lifespan(app: FastAPI):
         pools = supervisor.start(spec)
         app.state.router = Router(pools)
         app.state.embedders = build_embedders(spec, embedder_factory)
+        app.state.transcribers = build_transcribers(spec, transcriber_factory)
         yield
         supervisor.stop()
         await client.aclose()
@@ -95,9 +103,23 @@ def create_app(spec: Spec, supervisor: Supervisor,
         return JSONResponse({"object": "list", "data": data, "model": model,
                              "usage": {"prompt_tokens": 0, "total_tokens": 0}})
 
+    @app.post("/v1/audio/transcriptions")
+    async def transcriptions(file: UploadFile = File(...),
+                             model: str = Form(...),
+                             language: str | None = Form(None)) -> Response:
+        transcriber = app.state.transcribers.get(model)
+        if transcriber is None:
+            return JSONResponse(
+                {"error": f"stt model '{model}' is not raised"}, status_code=404)
+        audio = await file.read()
+        text = await asyncio.to_thread(transcriber.transcribe, audio, language)
+        return JSONResponse({"text": text})
+
     @app.get("/v1/models")
     async def list_models() -> Response:
-        slugs = sorted(set(_router().models()) | set(app.state.embedders))
+        slugs = sorted(set(_router().models())
+                       | set(app.state.embedders)
+                       | set(app.state.transcribers))
         data = [{"id": s, "object": "model", "owned_by": "ainbox"} for s in slugs]
         return JSONResponse({"object": "list", "data": data})
 

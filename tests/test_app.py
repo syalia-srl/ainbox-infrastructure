@@ -5,7 +5,7 @@ import pytest
 import respx
 from asgi_lifespan import LifespanManager
 from ainbox_gateway.app import create_app
-from ainbox_gateway.spec import Spec, LlmNode, EmbeddingsNode
+from ainbox_gateway.spec import Spec, LlmNode, EmbeddingsNode, SttNode
 from ainbox_gateway.supervisor import build_pools
 
 
@@ -124,6 +124,48 @@ async def test_models_includes_embeddings():
     async with _client(_app_with_embeddings()) as c:
         r = await c.get("/v1/models")
     assert [m["id"] for m in r.json()["data"]] == ["a", "emb"]
+
+
+class _FakeTranscriber:
+    def __init__(self, node):
+        self.slug = node.slug
+
+    def transcribe(self, audio, language=None):
+        return f"heard {len(audio)} bytes"
+
+
+def _app_with_stt():
+    spec = Spec(gateway_port=8080, llm=[LlmNode(slug="a", replicas=2)],
+                embeddings=[EmbeddingsNode(slug="emb", model="MiniLM")],
+                stt=[SttNode(slug="whisper-small", model="small")])
+    return create_app(spec, FakeSupervisor(),
+                      embedder_factory=_FakeEmbedder,
+                      transcriber_factory=_FakeTranscriber)
+
+
+@pytest.mark.asyncio
+async def test_transcription_returns_text():
+    async with _client(_app_with_stt()) as c:
+        r = await c.post("/v1/audio/transcriptions",
+                         files={"file": ("a.wav", b"1234", "audio/wav")},
+                         data={"model": "whisper-small"})
+    assert r.json() == {"text": "heard 4 bytes"}
+
+
+@pytest.mark.asyncio
+async def test_transcription_unknown_model_404():
+    async with _client(_app_with_stt()) as c:
+        r = await c.post("/v1/audio/transcriptions",
+                         files={"file": ("a.wav", b"x", "audio/wav")},
+                         data={"model": "nope"})
+    assert r.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_models_union_includes_stt():
+    async with _client(_app_with_stt()) as c:
+        r = await c.get("/v1/models")
+    assert [m["id"] for m in r.json()["data"]] == ["a", "emb", "whisper-small"]
 
 
 @pytest.mark.asyncio
