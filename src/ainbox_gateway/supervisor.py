@@ -1,7 +1,10 @@
 """Turn raise-spec nodes into llama-server launch commands + port maps."""
 from __future__ import annotations
 
-from typing import Protocol
+import subprocess
+import time
+import urllib.request
+from typing import Callable, Protocol
 
 from .pool import Backend, Pool
 from .spec import LlmNode, Spec
@@ -57,3 +60,36 @@ def build_pools(spec: Spec, base: int = 9000) -> dict[str, Pool]:
 class Supervisor(Protocol):
     def start(self, spec: Spec) -> dict[str, Pool]: ...
     def stop(self) -> None: ...
+
+
+def _http_ready(base_url: str, retries: int = 60, delay: float = 1.0) -> None:
+    for _ in range(retries):
+        try:
+            urllib.request.urlopen(f"{base_url}/v1/models", timeout=2)
+            return
+        except Exception:
+            time.sleep(delay)
+    raise RuntimeError(f"backend at {base_url} never became ready")
+
+
+class LlamaSupervisor:
+    """Spawns one llama-server per replica; tears them all down on stop."""
+
+    def __init__(self, spawn: Callable = subprocess.Popen,
+                 wait_ready: Callable[[str], None] = _http_ready):
+        self._spawn = spawn
+        self._wait_ready = wait_ready
+        self._procs: list = []
+
+    def start(self, spec: Spec) -> dict[str, Pool]:
+        for node, port in assign_ports(spec):
+            self._procs.append(self._spawn(llama_argv(node, port)))
+            self._wait_ready(f"http://127.0.0.1:{port}")
+        return build_pools(spec)
+
+    def stop(self) -> None:
+        for p in self._procs:
+            p.terminate()
+        for p in self._procs:
+            p.wait(timeout=10)
+        self._procs = []

@@ -61,8 +61,12 @@ RUN jq -r '.whisper_nodes[].model' /tmp/recipe.json | while read -r model; do \
     fi; \
 done
 
-# 6. Runtime Assets
-COPY whisper_api.py . 
+# 6. Gateway package — the pure-OpenAI front door + supervisor
+COPY gateway /app/gateway
+RUN uv pip install --system /app/gateway
+
+# 7. Runtime Assets
+COPY whisper_api.py .
 COPY entrypoint.sh .
 RUN chmod +x entrypoint.sh && rm /tmp/recipe.json && mkdir -p /app/config
 

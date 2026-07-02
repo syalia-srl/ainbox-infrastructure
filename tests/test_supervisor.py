@@ -1,5 +1,6 @@
 from ainbox_gateway.spec import Spec, LlmNode, LoraSpec
-from ainbox_gateway.supervisor import assign_ports, llama_argv, build_pools
+from ainbox_gateway.supervisor import (
+    assign_ports, llama_argv, build_pools, LlamaSupervisor)
 
 
 def test_assign_ports_expands_replicas_contiguously():
@@ -42,3 +43,29 @@ def test_build_pools_groups_replicas_by_slug():
     assert [b.base_url for b in pools["a"]._backends] == [
         "http://127.0.0.1:9000", "http://127.0.0.1:9001"]
     assert [b.base_url for b in pools["b"]._backends] == ["http://127.0.0.1:9002"]
+
+
+def test_llama_supervisor_spawns_argv_per_replica():
+    spec = Spec(gateway_port=8080, llm=[LlmNode(slug="a", replicas=2)])
+    calls = []
+
+    class FakeProc:
+        def __init__(self, argv):
+            self.argv = argv
+
+        def terminate(self):
+            calls.append(("term", self.argv[self.argv.index("--port") + 1]))
+
+        def wait(self, timeout=None):
+            pass
+
+    def fake_spawn(argv, **kw):
+        calls.append(("spawn", argv[argv.index("--port") + 1]))
+        return FakeProc(argv)
+
+    sup = LlamaSupervisor(spawn=fake_spawn, wait_ready=lambda url: None)
+    pools = sup.start(spec)
+    assert set(pools) == {"a"}
+    assert [c for c in calls if c[0] == "spawn"] == [("spawn", "9000"), ("spawn", "9001")]
+    sup.stop()
+    assert ("term", "9000") in calls and ("term", "9001") in calls

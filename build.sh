@@ -30,6 +30,13 @@ done
 # 3. Recipe Injection: Renames the specific recipe to a generic name for Docker
 cp "$RECIPE_PATH" "$BUILD_DIR/recipe.json"
 
+# 3b. Gateway package staging: the pure-OpenAI front door lives at the repo
+# root (pyproject.toml + src/), outside the build/ context, so stage a copy in.
+rm -rf "$BUILD_DIR/gateway"
+mkdir -p "$BUILD_DIR/gateway"
+cp pyproject.toml "$BUILD_DIR/gateway/pyproject.toml"
+cp -r src "$BUILD_DIR/gateway/src"
+
 echo "[FACTORY] Starting build for superbot:$IMAGE_TAG"
 
 # 4. Build Execution: Standard docker build
@@ -40,3 +47,4 @@ docker build --progress=plain \
 
 # 5. Cleanup
 rm "$BUILD_DIR/recipe.json"
+rm -rf "$BUILD_DIR/gateway"
