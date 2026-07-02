@@ -78,7 +78,7 @@ behind the door is an implementation detail.
 | STT | `POST /v1/audio/transcriptions` | faster-whisper (CTranslate2) | **v1 (built)** |
 | Model list | `GET /v1/models` | gateway (aggregated) | **v1 (built)** |
 | TTS | `POST /v1/audio/speech` | Kokoro / Piper / XTTS (TBD) | **spec-only** |
-| Image generation | `POST /v1/images/generations` | FLUX via ComfyUI or diffusers | **spec-only** |
+| Image generation | `POST /v1/images/generations` | FLUX.1-schnell via diffusers (in-process) | **v1 (built)** |
 
 "GPU-first" means *where compute runs*, not *one inference library*. The engine
 already runs multiple GPU-capable runtimes (whisper was never llama.cpp); this
@@ -273,10 +273,19 @@ route"; nothing about the gateway, spec, or round-robin changes.
   Baked via the recipe (`tts_nodes`); raised via a `tts` block. Needs
   `espeak-ng` in the image. Pairs with whisper so the suite can speak, not only
   listen. **Built** (own plan) as the 4th in-process backend.
-- **Image generation — `POST /v1/images/generations`.** FLUX (schnell/dev) via
-  a diffusion runtime (ComfyUI or `diffusers`) fronted to the OpenAI images
-  shape. Weights baked via the recipe; raised via an `images` block. Adds a 4th
-  GPU runtime — exactly the "N backends, one API" case this design is built for.
+- **Image generation — `POST /v1/images/generations`.** Runtime **decided:
+  FLUX.1-schnell via `diffusers`, in-process**, returning `b64_json` PNGs.
+  schnell chosen for Apache-2.0 (commercial-safe); **FLUX.1-dev and FLUX.2-dev
+  rejected** (non-commercial). ComfyUI reserved for a future advanced-pipelines
+  phase (controlnet/inpainting/graphs). **This backend strains the fixed-residency
+  model** — FLUX wants ~16–24 GB, so it can't co-reside with the 9B on a 16 GB
+  card: that's what the raise-spec + UI are for (raise FLUX *instead of* the 9B).
+  The `images` node therefore carries two extra knobs beyond the other backends:
+  `offload` (diffusers `enable_model_cpu_offload`, fits small cards) and `quant`
+  (default **fp8** so schnell fits a 4060). Weights **baked** into the image
+  (own layer for blob-delta) — the biggest image-size hit of the project,
+  accepted for the airgapped appliance. **Built** (own plan). The exact fp8
+  checkpoint + quant config are pinned in the GPU smoke, not on zion.
 
 ## Migration from current SuperBot engine
 
