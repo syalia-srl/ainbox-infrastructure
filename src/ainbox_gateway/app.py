@@ -2,18 +2,22 @@
 from __future__ import annotations
 
 import asyncio
+import json
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 import httpx
 from fastapi import FastAPI, File, Form, Request, Response, UploadFile
-from fastapi.responses import JSONResponse, StreamingResponse
+from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from starlette.background import BackgroundTask
 
 from .embeddings import Embedder, build_embedders
 from .router import Router, UnknownModel
-from .spec import EmbeddingsNode, Spec, SttNode
+from .spec import EmbeddingsNode, Spec, SttNode, load_spec, SpecError
 from .stt import Transcriber, build_transcribers
 from .supervisor import Supervisor
+
+_UI_FILE = Path(__file__).parent / "static" / "ui.html"
 
 
 def _default_embedder_factory(node: EmbeddingsNode) -> Embedder:
@@ -28,17 +32,34 @@ def _default_transcriber_factory(node: SttNode) -> Transcriber:
 
 def create_app(spec: Spec, supervisor: Supervisor,
                client: httpx.AsyncClient | None = None,
-               embedder_factory=None, transcriber_factory=None) -> FastAPI:
+               embedder_factory=None, transcriber_factory=None,
+               spec_raw: dict | None = None, spec_path: str | None = None) -> FastAPI:
     client = client or httpx.AsyncClient(timeout=None)
     embedder_factory = embedder_factory or _default_embedder_factory
     transcriber_factory = transcriber_factory or _default_transcriber_factory
 
+    def _start(new_spec: Spec, new_raw: dict | None) -> None:
+        pools = supervisor.start(new_spec)
+        app.state.router = Router(pools)
+        app.state.embedders = build_embedders(new_spec, embedder_factory)
+        app.state.transcribers = build_transcribers(new_spec, transcriber_factory)
+        app.state.spec = new_spec
+        app.state.spec_raw = new_raw
+
+    def _apply(new_spec: Spec, new_raw: dict) -> None:
+        supervisor.stop()
+        _start(new_spec, new_raw)
+        if spec_path:
+            Path(spec_path).write_text(json.dumps(new_raw, indent=2))
+
+    def _status() -> dict:
+        return {"llm": sorted(app.state.router.models()),
+                "embeddings": sorted(app.state.embedders),
+                "stt": sorted(app.state.transcribers)}
+
     @asynccontextmanager
     async def lifespan(app: FastAPI):
-        pools = supervisor.start(spec)
-        app.state.router = Router(pools)
-        app.state.embedders = build_embedders(spec, embedder_factory)
-        app.state.transcribers = build_transcribers(spec, transcriber_factory)
+        _start(spec, spec_raw)
         yield
         supervisor.stop()
         await client.aclose()
@@ -122,6 +143,31 @@ def create_app(spec: Spec, supervisor: Supervisor,
                        | set(app.state.transcribers))
         data = [{"id": s, "object": "model", "owned_by": "ainbox"} for s in slugs]
         return JSONResponse({"object": "list", "data": data})
+
+    @app.get("/")
+    async def ui() -> Response:
+        return FileResponse(_UI_FILE)
+
+    @app.get("/api/spec")
+    async def get_spec() -> Response:
+        return JSONResponse(app.state.spec_raw or {})
+
+    @app.post("/api/spec")
+    async def set_spec(request: Request) -> Response:
+        try:
+            raw = await request.json()
+        except Exception:
+            return JSONResponse({"error": "invalid JSON body"}, status_code=400)
+        try:
+            new_spec = load_spec(raw)  # validate BEFORE touching the running set
+        except SpecError as e:
+            return JSONResponse({"error": str(e)}, status_code=400)
+        await asyncio.to_thread(_apply, new_spec, raw)
+        return JSONResponse({"ok": True, "status": _status()})
+
+    @app.get("/api/status")
+    async def status() -> Response:
+        return JSONResponse(_status())
 
     app.state.client = client
     return app

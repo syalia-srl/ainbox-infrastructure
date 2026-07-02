@@ -1,3 +1,4 @@
+import json
 from contextlib import asynccontextmanager
 
 import httpx
@@ -180,3 +181,47 @@ async def test_lifespan_starts_and_stops_supervisor():
             r = await c.get("/v1/models")
             assert [m["id"] for m in r.json()["data"]] == ["a"]
     assert sup.stopped
+
+
+@pytest.mark.asyncio
+async def test_apply_new_spec_relaunches_registries(tmp_path):
+    spec = Spec(gateway_port=8080, llm=[LlmNode(slug="a", replicas=1)],
+                embeddings=[EmbeddingsNode(slug="emb", model="M")])
+    raw = {"gateway": {"port": 8080}, "llm": [{"slug": "a"}],
+           "embeddings": [{"slug": "emb", "model": "M"}]}
+    path = tmp_path / "spec.json"
+    app = create_app(spec, FakeSupervisor(), embedder_factory=_FakeEmbedder,
+                     transcriber_factory=_FakeTranscriber,
+                     spec_raw=raw, spec_path=str(path))
+    new_raw = {"gateway": {"port": 8080}, "llm": [{"slug": "b"}],
+               "stt": [{"slug": "w", "model": "small"}]}
+    async with _client(app) as c:
+        r = await c.post("/api/spec", json=new_raw)
+        assert r.status_code == 200
+        st = (await c.get("/api/status")).json()
+    assert st == {"llm": ["b"], "embeddings": [], "stt": ["w"]}
+    assert json.loads(path.read_text())["llm"][0]["slug"] == "b"
+
+
+@pytest.mark.asyncio
+async def test_apply_invalid_spec_400_and_keeps_running_set():
+    spec = Spec(gateway_port=8080, llm=[LlmNode(slug="a")])
+    raw = {"gateway": {"port": 8080}, "llm": [{"slug": "a"}]}
+    app = create_app(spec, FakeSupervisor(), embedder_factory=_FakeEmbedder,
+                     transcriber_factory=_FakeTranscriber, spec_raw=raw)
+    async with _client(app) as c:
+        r = await c.post("/api/spec", json={"gateway": {"port": 8080}, "llm": []})
+        assert r.status_code == 400
+        st = (await c.get("/api/status")).json()
+    assert st["llm"] == ["a"]  # unchanged
+
+
+@pytest.mark.asyncio
+async def test_get_spec_returns_raw():
+    raw = {"gateway": {"port": 8080}, "llm": [{"slug": "a"}]}
+    app = create_app(Spec(gateway_port=8080, llm=[LlmNode(slug="a")]),
+                     FakeSupervisor(), embedder_factory=_FakeEmbedder,
+                     transcriber_factory=_FakeTranscriber, spec_raw=raw)
+    async with _client(app) as c:
+        got = (await c.get("/api/spec")).json()
+    assert got == raw
