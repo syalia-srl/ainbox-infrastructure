@@ -229,6 +229,17 @@ This preserves the entire `warden-shared-ml-service` client migration (the
 `mic.js` work, per-app `/api/transcribe` proxies) — the engine simply becomes
 what warden's ML endpoints call.
 
+**warden stays provider-agnostic.** warden keeps its ability to point at *any*
+OpenAI-compatible endpoint, token, and model set (`WARDEN_LLM_BASE_URL` /
+`WARDEN_LLM_API_KEY` / `WARDEN_LLM_MODEL`). This engine is the **preferred
+default**, never a hardcode — a user can still aim warden at a cloud API or a
+remote box. The "prefer the local engine" decision does **not** live in warden;
+it lives in the **installer + shell**: `install.sh`, `install.ps1`, and the
+ainbox desktop shell default warden's endpoint to the local engine **and ask the
+user which recipe to download** (which baked model set to run). This — the
+installer/shell recipe-selection UX and the warden default-wiring — is the
+**last** phase (see Phases), after the engine and its UI are done.
+
 ## Deployment — replaces Ollama in two places
 
 - **`ainbox` compose rig:** the `ollama` service is replaced by an
