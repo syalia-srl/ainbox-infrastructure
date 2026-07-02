@@ -80,6 +80,19 @@ The gateway's routing/round-robin/lifespan logic is fully covered by unit tests
    # {"text":"..."}
    ```
 
+## TTS
+
+1. Raise a spec with a `tts` block, e.g. `{"slug":"voice","model":"kokoro","lang_code":"e","voice":"ef_dora"}`.
+2. Synthesize:
+
+   ```bash
+   curl -s localhost:8080/v1/audio/speech \
+     -H 'content-type: application/json' \
+     -d '{"model":"voice","input":"Hola, soy AInBox.","voice":"ef_dora"}' \
+     -o out.wav && file out.wav
+   # out.wav: RIFF (little-endian) data, WAVE audio
+   ```
+
 ## Notes
 
 - The legacy `deploy/*.json` files (`server_ports`, `whisper_nodes`,

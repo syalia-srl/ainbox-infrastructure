@@ -5,7 +5,7 @@ ENV DEBIAN_FRONTEND=noninteractive
 
 # 1. System Dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    python3 python3-pip curl wget git build-essential jq cmake libcurl4-openssl-dev \
+    python3 python3-pip curl wget git build-essential jq cmake libcurl4-openssl-dev espeak-ng \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # 2. Python Package Manager (uv) - Global Installation
@@ -72,6 +72,14 @@ RUN jq -r '.embedding_nodes[]?.model' /tmp/recipe.json | while read -r model; do
     if [ -n "$model" ] && [ "$model" != "null" ]; then \
         echo "[BUILD] Baking embedding model: $model..."; \
         python3 -c "from fastembed import TextEmbedding; TextEmbedding(model_name='$model')"; \
+    fi; \
+done
+
+# 6c. Pre-loading TTS models defined in the recipe (Kokoro weights + voices)
+RUN jq -r '.tts_nodes[]?.model' /tmp/recipe.json | while read -r model; do \
+    if [ "$model" = "kokoro" ]; then \
+        echo "[BUILD] Baking Kokoro TTS..."; \
+        python3 -c "from kokoro import KPipeline; KPipeline(lang_code='a')"; \
     fi; \
 done
 
