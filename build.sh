@@ -40,7 +40,10 @@ cp -r src "$BUILD_DIR/gateway/src"
 echo "[FACTORY] Starting build for superbot:$IMAGE_TAG"
 
 # 4. Build Execution: Standard docker build
+# CUDA_TAG (env, optional) selects the CUDA base image. Default keeps the
+# Ada/rtx4060 targets on 12.2.2; Blackwell hosts export CUDA_TAG=12.8.1-devel-ubuntu22.04.
 docker build --progress=plain \
+    --build-arg CUDA_TAG="${CUDA_TAG:-12.2.2-devel-ubuntu22.04}" \
     -t "superbot:$IMAGE_TAG" \
     -f "$BUILD_DIR/Dockerfile" \
     "$BUILD_DIR"

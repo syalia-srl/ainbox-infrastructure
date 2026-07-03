@@ -1,0 +1,23 @@
+{
+  "gateway": { "port": 8080 },
+  "llm": [
+    {
+      "slug": "gemma4-e4b",
+      "replicas": 1,
+      "n_ctx": 32768,
+      "n_gpu_layers": -1,
+      "flash_attn": true,
+      "cache_type_k": "q8_0",
+      "cache_type_v": "q8_0"
+    },
+    {
+      "slug": "qwen3-14b",
+      "replicas": 1,
+      "n_ctx": 32768,
+      "n_gpu_layers": -1,
+      "flash_attn": true,
+      "cache_type_k": "q8_0",
+      "cache_type_v": "q8_0"
+    }
+  ]
+}

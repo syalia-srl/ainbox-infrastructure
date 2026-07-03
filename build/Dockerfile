@@ -1,5 +1,9 @@
 # Stage 1: Build environment with CUDA support
-FROM nvidia/cuda:12.2.2-devel-ubuntu22.04 AS builder
+# CUDA_TAG is overridable at build time (see build.sh). Default 12.2.2 keeps the
+# Ada/rtx4060 appliance targets on their known-good driver floor; Blackwell hosts
+# (e.g. sm_120 RTX 5090) pass CUDA_TAG=12.8.1-devel-ubuntu22.04 for native support.
+ARG CUDA_TAG=12.2.2-devel-ubuntu22.04
+FROM nvidia/cuda:${CUDA_TAG} AS builder
 
 ENV DEBIAN_FRONTEND=noninteractive
 

@@ -1,0 +1,16 @@
+{
+  "whisper_nodes": [],
+  "embedding_nodes": [],
+  "tts_nodes": [],
+  "image_nodes": [],
+  "llama_node": [
+    {
+      "url": "https://huggingface.co/unsloth/gemma-4-E4B-it-GGUF/resolve/main/gemma-4-E4B-it-Q4_K_M.gguf?download=true",
+      "alias": "gemma4-e4b"
+    },
+    {
+      "url": "https://huggingface.co/unsloth/Qwen3-14B-GGUF/resolve/main/Qwen3-14B-Q4_K_M.gguf?download=true",
+      "alias": "qwen3-14b"
+    }
+  ]
+}
