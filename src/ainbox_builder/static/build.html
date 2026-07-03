@@ -1,0 +1,231 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>SYALIA · Builder</title>
+<link rel="icon" href="/syalia-ui/favicon.svg"/>
+<link rel="stylesheet" href="/syalia-ui/syalia-ui.css"/>
+<style>
+  * { box-sizing:border-box; }
+  html,body { margin:0; min-height:100%; background:var(--bg-deep); color:var(--text); }
+  body {
+    background:
+      radial-gradient(1100px 520px at 88% -12%, rgba(129,140,248,.10) 0%, transparent 62%),
+      var(--bg-deep);
+  }
+
+  header {
+    position:sticky; top:0; z-index:20; display:flex; align-items:center; gap:12px; flex-wrap:wrap;
+    padding:14px 26px; background:rgba(2,6,23,.82); backdrop-filter:blur(10px);
+    border-bottom:1px solid var(--border);
+  }
+  .brandmark { width:30px; height:30px; border-radius:8px; flex:none;
+               box-shadow:0 0 0 1px #00000050, 0 8px 20px -8px rgba(129,140,248,.5); }
+  .titles h1 { margin:0; font-size:15px; font-weight:600; display:flex;
+               align-items:baseline; gap:7px; }
+  .titles .eyebrow { font-family:var(--font-mono); font-size:10px; letter-spacing:2px;
+                     text-transform:uppercase; color:var(--text-faint); margin-top:2px; }
+  .spacer { flex:1; }
+  .relaunch {
+    font-family:var(--font-sans); font-weight:600; font-size:14px;
+    border:1px solid var(--border); border-radius:var(--radius); padding:10px 16px;
+    background:var(--surface); color:var(--text-dim); cursor:not-allowed;
+    display:flex; align-items:center; gap:8px; transition:all .16s ease;
+  }
+  .relaunch .material-icons { font-size:18px; }
+  .relaunch.dirty { cursor:pointer; color:#fff; border-color:transparent;
+                    background:var(--accent); box-shadow:0 8px 24px -10px var(--accent); }
+  .relaunch.dirty:hover { background:var(--accent-hi); }
+  .relaunch.busy { opacity:.65; cursor:wait; }
+
+  main { max-width:1180px; margin:0 auto; padding:24px 26px 20px; }
+  .rail { margin-bottom:28px; }
+  .rail-head { display:flex; align-items:baseline; gap:11px; margin-bottom:13px;
+               padding-bottom:9px; border-bottom:1px solid var(--border); }
+  .rail-head .kind { font-family:var(--font-mono); font-size:11px; letter-spacing:1.5px;
+                     text-transform:uppercase; color:var(--accent-hi); font-weight:700; }
+  .rail-head .desc { font-size:13px; color:var(--text-dim); }
+  .add { margin-left:auto; position:relative; display:inline-flex; align-items:center; gap:5px;
+         font-family:var(--font-sans); font-size:12.5px; color:var(--accent-hi);
+         background:transparent; border:1px dashed var(--border-hi); border-radius:var(--radius);
+         padding:6px 11px; cursor:pointer; transition:all .15s ease; }
+  .add:hover { border-color:var(--accent-hi); background:var(--accent-lo); }
+  .add .material-icons { font-size:16px; }
+
+  .modules { display:flex; flex-wrap:wrap; gap:14px; }
+  .module { width:264px; background:var(--surface); border:1px solid var(--border);
+            border-radius:10px; padding:13px 15px 12px; transition:all .18s ease; }
+  .m-top { display:flex; align-items:center; gap:9px; margin-bottom:11px; }
+  .dot { width:8px; height:8px; border-radius:50%; flex:none;
+         background:var(--ok); box-shadow:0 0 9px -1px var(--ok); }
+  .slug { font-family:var(--font-mono); font-size:13.5px; font-weight:700; color:var(--text);
+          overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .rm { margin-left:auto; width:22px; height:22px; border-radius:6px; border:0; flex:none;
+        background:transparent; color:var(--text-faint); cursor:pointer;
+        display:grid; place-items:center; transition:all .15s ease; }
+  .rm .material-icons { font-size:17px; }
+  .rm:hover { background:rgba(248,113,113,.14); color:var(--err); }
+
+  .ctl { display:flex; align-items:center; justify-content:space-between; gap:10px; padding:6px 0; }
+  .ctl label { font-size:12px; color:var(--text-dim); }
+  .val { font-family:var(--font-mono); font-size:12px; color:var(--text);
+         overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:170px; }
+
+  .pick, input.pick { font-family:var(--font-mono); font-size:12px; color:var(--text);
+    background:var(--surface-2); border:1px solid var(--border); border-radius:6px;
+    padding:6px 9px; cursor:pointer; }
+  input.pick { cursor:text; }
+  .pick:hover, input.pick:focus { border-color:var(--accent-hi); outline:none; }
+
+  .toggle { width:38px; height:21px; border-radius:99px; border:1px solid var(--border);
+    background:var(--surface-2); position:relative; cursor:pointer; flex:none; transition:all .18s ease; }
+  .toggle::after { content:""; position:absolute; top:2px; left:2px; width:15px; height:15px;
+    border-radius:50%; background:var(--text-faint); transition:all .18s ease; }
+  .toggle.on { background:var(--accent-lo); border-color:var(--accent-hi); }
+  .toggle.on::after { left:19px; background:var(--accent-hi); }
+
+  .empty { font-size:13px; color:var(--text-faint); font-family:var(--font-mono); padding:12px 2px; }
+  .empty em { color:var(--accent-hi); font-style:normal; }
+
+  .menu { position:absolute; top:calc(100% + 6px); right:0; z-index:30;
+    background:var(--surface-2); border:1px solid var(--border-hi); border-radius:10px;
+    padding:6px; min-width:196px; box-shadow:0 24px 54px -20px #000; }
+  .menu button { display:block; width:100%; text-align:left; font-family:var(--font-mono);
+    font-size:12.5px; color:var(--text); background:transparent; border:0; padding:8px 10px;
+    border-radius:7px; cursor:pointer; }
+  .menu button:hover { background:var(--accent-lo); color:var(--accent-hi); }
+  .menu button[disabled] { color:var(--text-faint); cursor:default; }
+  .menu button[disabled]:hover { background:transparent; }
+
+  #toast { position:fixed; left:50%; bottom:26px; transform:translateX(-50%) translateY(20px);
+    background:var(--surface-2); border:1px solid var(--border-hi); border-radius:10px;
+    padding:11px 18px; font-family:var(--font-mono); font-size:12.5px; color:var(--text);
+    opacity:0; pointer-events:none; transition:all .25s ease; z-index:40; }
+  #toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
+  #toast.err { border-color:var(--err); color:#fecaca; }
+  #toast.ok  { border-color:var(--ok); color:#bbf7d0; }
+
+  :focus-visible { outline:2px solid var(--accent-hi); outline-offset:2px; }
+  @media (prefers-reduced-motion:reduce){ *{animation:none !important; transition:none !important;} }
+</style>
+</head>
+<body>
+<header>
+  <img class="brandmark" src="/syalia-ui/favicon.svg" alt="SYALIA"/>
+  <div class="titles">
+    <h1><span class="syalia-wordmark">SYALIA</span><span class="syalia-appname">· Builder</span></h1>
+    <div class="eyebrow">recipe · bake · push</div>
+  </div>
+  <div class="spacer"></div>
+  <input id="name" class="pick" placeholder="recipe name" style="max-width:150px"/>
+  <select id="cuda" class="pick" title="CUDA base"></select>
+  <input id="registry" class="pick" value="registry.syalia.dev" style="max-width:190px"/>
+  <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text-dim)">
+    <span class="toggle on" id="push" role="switch" aria-checked="true"></span>push</label>
+  <button class="relaunch dirty" id="build"><span class="material-icons">build</span>
+    <span id="blabel">Build</span></button>
+</header>
+<main id="board"></main>
+<section style="max-width:1180px;margin:0 auto;padding:0 26px 60px">
+  <div class="rail-head"><span class="kind">Build log</span>
+    <span class="desc" id="pill">idle</span></div>
+  <pre id="log" style="background:var(--surface);border:1px solid var(--border);
+    border-radius:10px;padding:14px;font-family:var(--font-mono);font-size:12px;
+    color:var(--text-dim);max-height:52vh;overflow:auto;white-space:pre-wrap"></pre>
+</section>
+<div id="toast"></div>
+<script>
+const RAILS = {llm:"LLM · language models", stt:"STT · speech to text", embeddings:"Embeddings · vectors"};
+const CUDA = {"Blackwell (5090)":"12.8.1-devel-ubuntu22.04", "Ada (4060)":"12.2.2-devel-ubuntu22.04"};
+const $ = s => document.querySelector(s);
+let CATALOG = {llm:{},stt:{},embeddings:{}};
+let sel = {llm:[], stt:[], embeddings:[]};
+
+(async function boot(){
+  CATALOG = await (await fetch("/api/catalog")).json();
+  const cu = $("#cuda"); Object.entries(CUDA).forEach(([k,v])=>{
+    const o=document.createElement("option"); o.value=v; o.textContent=k; cu.appendChild(o);});
+  $("#push").onclick = () => { const t=$("#push"); const on=!t.classList.contains("on");
+    t.classList.toggle("on",on); t.setAttribute("aria-checked",on); };
+  render();
+})();
+
+function render(){
+  const board=$("#board"); board.innerHTML="";
+  for(const kind of Object.keys(RAILS)){
+    const rail=document.createElement("section"); rail.className="rail";
+    rail.innerHTML=`<div class="rail-head"><span class="kind">${RAILS[kind].split(" · ")[0]}</span>
+      <span class="desc">${RAILS[kind].split(" · ")[1]}</span></div>`;
+    const add=document.createElement("button"); add.className="add";
+    add.innerHTML=`<span class="material-icons">add</span>add`;
+    add.onclick=e=>openMenu(e,kind); rail.querySelector(".rail-head").appendChild(add);
+    const mods=document.createElement("div"); mods.className="modules";
+    if(!sel[kind].length) mods.innerHTML=`<div class="empty">Nothing selected — <em>add</em> a model.</div>`;
+    else sel[kind].forEach((m,i)=>mods.appendChild(card(kind,m,i)));
+    rail.appendChild(mods); board.appendChild(rail);
+  }
+}
+function card(kind,m,i){
+  const el=document.createElement("div"); el.className="module";
+  el.innerHTML=`<div class="m-top"><span class="dot"></span>
+    <span class="slug" title="${m.alias}">${m.alias}</span></div>`;
+  const rm=document.createElement("button"); rm.className="rm";
+  rm.innerHTML=`<span class="material-icons">close</span>`;
+  rm.onclick=()=>{sel[kind].splice(i,1);render();};
+  el.querySelector(".m-top").appendChild(rm);
+  const info=kind==="llm"?(CATALOG.llm[m.alias]?.size||"custom"):(m.model||"");
+  el.insertAdjacentHTML("beforeend",`<div class="ctl"><label>${kind==="llm"?"size":"model"}</label>
+    <span class="val" title="${info}">${info}</span></div>`);
+  return el;
+}
+function openMenu(e,kind){
+  e.stopPropagation(); document.querySelectorAll(".menu").forEach(m=>m.remove());
+  const menu=document.createElement("div"); menu.className="menu";
+  Object.keys(CATALOG[kind]).forEach(slug=>{
+    const b=document.createElement("button");
+    const present=sel[kind].some(m=>m.alias===slug);
+    if(present){b.disabled=true;b.textContent=slug+"  · added";}
+    else{b.textContent=slug;b.onclick=()=>{addModel(kind,slug);close();render();};}
+    menu.appendChild(b);
+  });
+  if(kind==="llm"){ const b=document.createElement("button"); b.textContent="+ custom URL…";
+    b.onclick=()=>{ const url=prompt("HF .gguf resolve URL"); if(!url)return;
+      const alias=prompt("alias (slug)"); if(!alias)return;
+      sel.llm.push({alias,url}); close(); render(); }; menu.appendChild(b); }
+  e.currentTarget.appendChild(menu);
+  setTimeout(()=>document.addEventListener("click",close,{once:true}),0);
+  function close(){document.querySelectorAll(".menu").forEach(m=>m.remove());}
+}
+function addModel(kind,slug){
+  if(kind==="llm") sel.llm.push({alias:slug, url:CATALOG.llm[slug].url});
+  else sel[kind].push({alias:slug, model:CATALOG[kind][slug].model});
+}
+async function build(){
+  const name=$("#name").value.trim();
+  if(!name){toast("Name the recipe.","err");return;}
+  if(!sel.llm.length){toast("Add at least one LLM.","err");return;}
+  const btn=$("#build"); btn.classList.add("busy"); btn.disabled=true;
+  $("#log").textContent=""; $("#pill").textContent="building";
+  const body={name, cuda_tag:$("#cuda").value, registry:$("#registry").value.trim(),
+    push:$("#push").classList.contains("on"), selection:sel};
+  const r=await fetch("/api/build",{method:"POST",headers:{"content-type":"application/json"},
+    body:JSON.stringify(body)});
+  const data=await r.json();
+  if(!r.ok){toast(data.error||"build failed","err"); $("#pill").textContent="failed";
+    btn.classList.remove("busy"); btn.disabled=false; return;}
+  const es=new EventSource(`/api/build/${data.build_id}/log`);
+  const log=$("#log");
+  es.onmessage=e=>{ log.textContent+=e.data+"\n"; log.scrollTop=log.scrollHeight; };
+  es.onerror=async ()=>{ es.close();
+    const st=await (await fetch(`/api/build/${data.build_id}`)).json();
+    $("#pill").textContent=st.status; toast(st.status==="done"?"Done.":"Failed.",
+      st.status==="done"?"ok":"err");
+    btn.classList.remove("busy"); btn.disabled=false; };
+}
+function toast(msg,kind){ const t=$("#toast"); t.textContent=msg; t.className="show "+(kind||"");
+  clearTimeout(toast._t); toast._t=setTimeout(()=>t.className="",2600); }
+$("#build").onclick=build;
+</script>
+</body>
+</html>

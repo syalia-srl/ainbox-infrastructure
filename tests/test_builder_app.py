@@ -78,3 +78,10 @@ async def test_build_invalid_recipe_400(tmp_path):
             "name": "t2", "cuda_tag": "x", "registry": "r", "push": False,
             "selection": {"stt": []}})
         assert r.status_code == 400
+
+
+@pytest.mark.asyncio
+async def test_serves_page(tmp_path):
+    async with _client(_app(tmp_path)) as c:
+        r = await c.get("/")
+        assert r.status_code == 200 and "Builder" in r.text

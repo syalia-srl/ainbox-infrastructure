@@ -26,6 +26,7 @@ where = ["src"]
 [tool.setuptools.package-data]
 ainbox_gateway = ["static/*.html", "static/syalia-ui/*.css", "static/syalia-ui/*.svg",
                   "static/syalia-ui/*.js", "static/syalia-ui/fonts/*.woff2"]
+ainbox_builder = ["static/*.html"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"

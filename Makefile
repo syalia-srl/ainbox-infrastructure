@@ -1,7 +1,7 @@
 # ==============================================================================
 # SuperBot Infrastructure Operations
 # ==============================================================================
-.PHONY: image run stop
+.PHONY: image run stop ui-build
 
 # --- Build Phase ---
 image:
@@ -37,3 +37,7 @@ endif
 
 stop:
 	@docker compose --profile gpu --profile cpu down
+
+# --- Builder UI (build-time recipe authoring) ---
+ui-build:
+	@PYTHONPATH=src .venv/bin/python scripts/build_ui.py
