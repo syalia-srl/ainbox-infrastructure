@@ -26,7 +26,9 @@ if command -v nvidia-smi &> /dev/null && nvidia-smi &> /dev/null; then
     echo "[SYSTEM] Environment: NVIDIA GPU Detected."
 else
     echo "[SYSTEM] Environment: CPU-Only."
-    ln -sf /usr/local/cuda/lib64/stubs/libcuda.so /usr/lib/libcuda.so.1
+    # Only relevant on the CUDA image; the CPU-slim image has no stub.
+    [ -f /usr/local/cuda/lib64/stubs/libcuda.so ] && \
+        ln -sf /usr/local/cuda/lib64/stubs/libcuda.so /usr/lib/libcuda.so.1 || true
 fi
 
 # ==============================================================================

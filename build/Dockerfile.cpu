@@ -1,0 +1,54 @@
+# CPU-slim engine image — no CUDA. For small public demos on a GPU-less VPS.
+# Bakes only what the minimal recipe declares (LLM via llama.cpp CPU + Whisper).
+FROM python:3.12-slim
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+# 1. System + build deps (compile llama.cpp; ffmpeg for faster-whisper decode).
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential cmake git curl jq libcurl4-openssl-dev ffmpeg \
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
+
+# 2. uv
+ADD https://astral.sh/uv/install.sh /tmp/install_uv.sh
+RUN chmod +x /tmp/install_uv.sh && \
+    UV_INSTALL_DIR="/usr/local/bin" INSTALLER_NO_MODIFY_PATH=1 /tmp/install_uv.sh && \
+    rm /tmp/install_uv.sh
+
+WORKDIR /app
+
+# 3. Compile llama.cpp — CPU only (GGML_CUDA defaults OFF).
+RUN git clone --depth 1 https://github.com/ggerganov/llama.cpp.git && \
+    cd llama.cpp && mkdir build && cd build && \
+    cmake .. -DGGML_NATIVE=OFF && \
+    cmake --build . --config Release -j"$(nproc)" --target llama-server && \
+    cp bin/llama-server /app/ && \
+    cd /app && rm -rf llama.cpp
+
+# 4. Gateway package (base deps) + faster-whisper for STT. No GPU extras.
+COPY gateway /app/gateway
+RUN uv pip install --system /app/gateway "faster-whisper>=1.0.1"
+
+# 5. Bake models from the recipe: LLM GGUFs (+ alias symlinks) and Whisper.
+COPY recipe.json /tmp/recipe.json
+RUN mkdir -p /models && \
+    jq -c '.llama_node[]?' /tmp/recipe.json | while read -r node; do \
+        url=$(echo "$node" | jq -r '.url'); alias=$(echo "$node" | jq -r '.alias'); \
+        if [ "$url" != "null" ] && [ -n "$alias" ]; then \
+            filename=$(basename "$url" | cut -d'?' -f1); \
+            echo "[BUILD] Downloading $filename for alias $alias..."; \
+            curl -L -f "$url" -o "/models/$filename" --retry 5; \
+            ln -s "/models/$filename" "/models/${alias}.gguf"; \
+        fi; \
+    done
+RUN jq -r '.whisper_nodes[]?.model' /tmp/recipe.json | while read -r model; do \
+    if [ -n "$model" ] && [ "$model" != "null" ]; then \
+        echo "[BUILD] Baking Whisper model: $model..."; \
+        python3 -c "from faster_whisper import WhisperModel; WhisperModel('$model', device='cpu')"; \
+    fi; \
+done
+
+# 6. Runtime
+COPY entrypoint.sh .
+RUN chmod +x entrypoint.sh && rm /tmp/recipe.json && mkdir -p /app/config
+ENTRYPOINT ["/app/entrypoint.sh"]
