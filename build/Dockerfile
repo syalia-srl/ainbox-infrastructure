@@ -1,18 +1,52 @@
-# Stage 1: Build environment with CUDA support
-# CUDA_TAG is overridable at build time (see build.sh). Default 12.2.2 keeps the
-# Ada/rtx4060 appliance targets on their known-good driver floor; Blackwell hosts
-# (e.g. sm_120 RTX 5090) pass CUDA_TAG=12.8.1-devel-ubuntu22.04 for native support.
+# syntax=docker/dockerfile:1
+# ============================================================================
+# Multi-stage: a heavy CUDA-devel *builder* compiles llama.cpp; a slim CUDA-
+# *runtime* image carries only what the recipe actually needs. build.sh derives
+# the CUDA tags + WITH_LLAMA + EXTRAS from the recipe JSON and passes them here.
+# ============================================================================
+
+# ---- Stage 1: builder — compile llama.cpp (only when the recipe has an LLM) --
+# CUDA_TAG default 12.2.2 keeps Ada/rtx4060 on their known-good floor; Blackwell
+# (sm_120 RTX 5090) hosts pass CUDA_TAG=12.8.1-devel-ubuntu22.04.
 ARG CUDA_TAG=12.2.2-devel-ubuntu22.04
 FROM nvidia/cuda:${CUDA_TAG} AS builder
 
 ENV DEBIAN_FRONTEND=noninteractive
+ARG WITH_LLAMA=1
 
-# 1. System Dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    python3 python3-pip curl wget git build-essential jq cmake libcurl4-openssl-dev espeak-ng \
+    git build-essential cmake libcurl4-openssl-dev \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# 2. Python Package Manager (uv) - Global Installation
+WORKDIR /build
+
+# Compile llama.cpp into /out (server binary + its shared libs). LLM-less
+# recipes (WITH_LLAMA=0) skip the whole compile and leave /out empty.
+RUN mkdir -p /out/libs && \
+    if [ "$WITH_LLAMA" = "1" ]; then \
+      git clone --depth 1 https://github.com/ggerganov/llama.cpp.git && \
+      cd llama.cpp && mkdir build && cd build && \
+      cmake .. -DGGML_CUDA=ON \
+               -DCMAKE_LIBRARY_PATH=/usr/local/cuda/lib64/stubs \
+               -DCMAKE_EXE_LINKER_FLAGS="-Wl,--allow-shlib-undefined" && \
+      cmake --build . --config Release -j"$(nproc)" --target llama-server && \
+      find . -name "lib*.so*" -exec cp -a {} /out/libs/ \; && \
+      cp bin/llama-server /out/llama-server; \
+    else echo "[BUILD] LLM-less recipe — skipping llama.cpp compile"; fi
+
+# ---- Stage 2: runtime — slim base, only the recipe's backends ---------------
+ARG CUDA_RUNTIME_TAG=12.2.2-runtime-ubuntu22.04
+FROM nvidia/cuda:${CUDA_RUNTIME_TAG} AS runtime
+
+ENV DEBIAN_FRONTEND=noninteractive
+ENV LD_LIBRARY_PATH=/usr/lib
+
+# Runtime-only system deps: python + jq + curl, espeak-ng (kokoro phonemizer),
+# libgomp1 (llama-server OpenMP), libcurl4 (llama.cpp curl). No compilers.
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    python3 python3-pip curl jq espeak-ng libgomp1 libcurl4 \
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
+
 ADD https://astral.sh/uv/install.sh /tmp/install_uv.sh
 RUN chmod +x /tmp/install_uv.sh && \
     UV_INSTALL_DIR="/usr/local/bin" INSTALLER_NO_MODIFY_PATH=1 /tmp/install_uv.sh && \
@@ -20,82 +54,65 @@ RUN chmod +x /tmp/install_uv.sh && \
 
 WORKDIR /app
 
-# 3. Compile Llama.cpp (ACTUALIZADO PARA LIBRERÍAS DINÁMICAS - FIX)
-RUN git clone https://github.com/ggerganov/llama.cpp.git && \
-    cd llama.cpp && \
-    mkdir build && cd build && \
-    cmake .. -DGGML_CUDA=ON \
-             -DCMAKE_LIBRARY_PATH=/usr/local/cuda/lib64/stubs \
-             -DCMAKE_EXE_LINKER_FLAGS="-Wl,--allow-shlib-undefined" && \
-    cmake --build . --config Release -j$(nproc) --target llama-server && \
-    find . -name "lib*.so*" -exec cp -a {} /usr/lib/ \; && \
-    ldconfig && \
-    cp bin/llama-server /app/ && \
-    cd /app && rm -rf llama.cpp 
+# Pull llama-server + libs from the builder — present only when WITH_LLAMA=1.
+# The bind mount keeps the install conditional on what the builder produced.
+RUN --mount=type=bind,from=builder,source=/out,target=/builder-out \
+    if [ -f /builder-out/llama-server ]; then \
+      cp /builder-out/llama-server /app/llama-server && \
+      cp -a /builder-out/libs/. /usr/lib/ && ldconfig && \
+      echo "[BUILD] llama-server installed"; \
+    else echo "[BUILD] no llama-server (LLM-less image)"; fi
 
-# Forzamos la ruta de las librerías dinámicas
-ENV LD_LIBRARY_PATH=/usr/lib
+# Gateway + supervisor. EXTRAS (from build.sh) selects backend deps, e.g.
+# "stt,embeddings"; empty → core only (no torch/diffusers/whisper/fastembed).
+ARG EXTRAS=""
+COPY gateway /app/gateway
+RUN if [ -n "$EXTRAS" ]; then uv pip install --system "/app/gateway[$EXTRAS]"; \
+    else uv pip install --system /app/gateway; fi
 
-# 4. Application Dependencies
-COPY pyproject.toml .
-RUN uv pip install --system .
-
-# 5. Model Vault - Optimized for Multi-model and Symlinks
 COPY recipe.json /tmp/recipe.json
 
-# Download LLM models and create symlinks based on Alias
+# Bake model weights — each loop is a no-op when its recipe array is empty, and
+# its Python deps are present only if the matching EXTRA was installed above.
 RUN mkdir -p /models && \
-    jq -c '.llama_node[]' /tmp/recipe.json | while read -r node; do \
-        url=$(echo "$node" | jq -r '.url'); \
-        alias=$(echo "$node" | jq -r '.alias'); \
+    jq -c '.llama_node[]?' /tmp/recipe.json | while read -r node; do \
+        url=$(echo "$node" | jq -r '.url'); alias=$(echo "$node" | jq -r '.alias'); \
         if [ "$url" != "null" ] && [ -n "$alias" ]; then \
             filename=$(basename "$url" | cut -d'?' -f1); \
             echo "[BUILD] Downloading $filename for alias $alias..."; \
             curl -L -f "$url" -o "/models/$filename" --retry 5; \
             ln -s "/models/$filename" "/models/${alias}.gguf"; \
-            echo "[BUILD] Symlink created: /models/${alias}.gguf -> $filename"; \
         fi; \
     done
 
-# Pre-loading MULTIPLE Whisper models defined in the recipe
-RUN jq -r '.whisper_nodes[].model' /tmp/recipe.json | while read -r model; do \
+RUN jq -r '.whisper_nodes[]?.model' /tmp/recipe.json | while read -r model; do \
     if [ -n "$model" ] && [ "$model" != "null" ]; then \
-        echo "[BUILD] Baking Whisper model: $model..."; \
+        echo "[BUILD] Baking Whisper: $model"; \
         python3 -c "from faster_whisper import WhisperModel; WhisperModel('$model', device='cpu')"; \
     fi; \
 done
 
-# 6. Gateway package — the pure-OpenAI front door + supervisor.
-# Installed WITH the [gpu] extra (fastembed-gpu) so embeddings run on CUDA and
-# so fastembed is present for the embedding-bake step below.
-COPY gateway /app/gateway
-RUN uv pip install --system '/app/gateway[gpu]'
-
-# 6b. Pre-loading embedding models defined in the recipe (fastembed ONNX cache)
 RUN jq -r '.embedding_nodes[]?.model' /tmp/recipe.json | while read -r model; do \
     if [ -n "$model" ] && [ "$model" != "null" ]; then \
-        echo "[BUILD] Baking embedding model: $model..."; \
+        echo "[BUILD] Baking embedding: $model"; \
         python3 -c "from fastembed import TextEmbedding; TextEmbedding(model_name='$model')"; \
     fi; \
 done
 
-# 6c. Pre-loading TTS models defined in the recipe (Kokoro weights + voices)
 RUN jq -r '.tts_nodes[]?.model' /tmp/recipe.json | while read -r model; do \
     if [ "$model" = "kokoro" ]; then \
-        echo "[BUILD] Baking Kokoro TTS..."; \
+        echo "[BUILD] Baking Kokoro TTS"; \
         python3 -c "from kokoro import KPipeline; KPipeline(lang_code='a')"; \
     fi; \
 done
 
-# 6d. Pre-loading image-gen models (FLUX weights + encoders) — LARGE layer
 RUN jq -r '.image_nodes[]?.model' /tmp/recipe.json | while read -r model; do \
     if [ -n "$model" ] && [ "$model" != "null" ]; then \
-        echo "[BUILD] Baking FLUX image model: $model..."; \
+        echo "[BUILD] Baking FLUX image model: $model"; \
         python3 -c "from diffusers import FluxPipeline; import torch; FluxPipeline.from_pretrained('$model', torch_dtype=torch.bfloat16)"; \
     fi; \
 done
 
-# 7. Runtime Assets
 COPY entrypoint.sh .
 RUN chmod +x entrypoint.sh && rm /tmp/recipe.json && mkdir -p /app/config
 

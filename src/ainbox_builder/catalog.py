@@ -1,14 +1,18 @@
 """Curated model catalog for the builder UI. URLs are HF GGUF resolve links.
 
 `gb` is the on-disk GGUF size (Q4_K_M); it feeds the image-size estimate.
-`BASE_IMAGE_GB` is the fixed overhead the Dockerfile bakes regardless of the
-recipe: the CUDA-devel base + llama.cpp + the gateway[gpu] deps (torch/onnx).
-Calibrate it against a real `docker images` size when convenient.
+`BASE_IMAGE_GB` is the slim floor every image carries: the CUDA-*runtime* base +
+python + gateway core + (negligible) llama.cpp libs. `DEP_GB` is the extra a
+modality's Python backend adds *once* when present (torch dominates tts/images).
+Since the multi-stage build installs only the recipe's backends, the estimate is
+base + Σ model sizes + Σ present-modality deps. Calibrate against a real
+`docker images` size when convenient.
 """
 
 _HF = "https://huggingface.co"
 
-BASE_IMAGE_GB = 13.0
+BASE_IMAGE_GB = 4.0
+DEP_GB = {"stt": 0.4, "embeddings": 0.6, "tts": 3.0, "images": 6.0}
 
 CATALOG = {
     "llm": {

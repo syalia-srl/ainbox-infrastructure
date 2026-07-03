@@ -34,9 +34,15 @@ def test_node_without_slug_raises():
         load_spec({"gateway": {"port": 8080}, "llm": [{"n_ctx": 4096}]})
 
 
-def test_empty_llm_raises():
+def test_fully_empty_raises():
     with pytest.raises(SpecError):
         load_spec({"gateway": {"port": 8080}, "llm": []})
+
+
+def test_llm_optional_when_another_modality_present():
+    spec = load_spec({"gateway": {"port": 8080},
+                      "stt": [{"slug": "w", "model": "small"}]})
+    assert spec.llm == [] and spec.stt[0].slug == "w"
 
 
 def test_embeddings_optional_defaults_empty():

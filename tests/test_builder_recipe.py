@@ -28,6 +28,11 @@ def test_render_recipe_llm_only():
     assert out["whisper_nodes"] == [] and out["embedding_nodes"] == []
 
 
-def test_render_recipe_rejects_empty_llm():
+def test_render_recipe_llm_less_ok_with_stt():
+    out = render_recipe({"stt": [{"alias": "x", "model": "tiny"}]})
+    assert out["llama_node"] == [] and out["whisper_nodes"] == [{"model": "tiny", "alias": "x"}]
+
+
+def test_render_recipe_rejects_fully_empty():
     with pytest.raises(RecipeError):
-        render_recipe({"stt": [{"alias": "x", "model": "tiny"}]})
+        render_recipe({"llm": [], "stt": []})

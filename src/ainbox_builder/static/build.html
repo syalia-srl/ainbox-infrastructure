@@ -148,12 +148,13 @@ const CUDA = {"Blackwell (5090)":"12.8.1-devel-ubuntu22.04", "Ada (4060)":"12.2.
 const $ = s => document.querySelector(s);
 let CATALOG = {llm:{},stt:{},embeddings:{}};
 let sel = {llm:[], stt:[], embeddings:[]};
-let BASE_GB = 12, DISK = null;
+let BASE_GB = 4, DEP_GB = {}, DISK = null;
 const UNKNOWN_LLM_GB = 6.0;
 
 (async function boot(){
   CATALOG = await (await fetch("/api/catalog")).json();
-  BASE_GB = CATALOG._meta?.base_image_gb ?? 12;
+  BASE_GB = CATALOG._meta?.base_image_gb ?? 4;
+  DEP_GB = CATALOG._meta?.dep_gb ?? {};
   const cu = $("#cuda"); Object.entries(CUDA).forEach(([k,v])=>{
     const o=document.createElement("option"); o.value=v; o.textContent=k; cu.appendChild(o);});
   $("#push").onclick = () => { const t=$("#push"); const on=!t.classList.contains("on");
@@ -164,9 +165,12 @@ const UNKNOWN_LLM_GB = 6.0;
 
 function estimate(){
   let gb = BASE_GB;
-  for(const k of ["llm","stt","embeddings"]) for(const m of sel[k]){
-    const e = CATALOG[k]?.[m.alias];
-    gb += (e && e.gb!=null) ? e.gb : (k==="llm" ? UNKNOWN_LLM_GB : 0);
+  for(const k of ["llm","stt","embeddings"]){
+    for(const m of sel[k]){
+      const e = CATALOG[k]?.[m.alias];
+      gb += (e && e.gb!=null) ? e.gb : (k==="llm" ? UNKNOWN_LLM_GB : 0);
+    }
+    if(sel[k].length && DEP_GB[k]!=null) gb += DEP_GB[k];
   }
   return Math.round(gb*10)/10;
 }
@@ -240,7 +244,8 @@ function addModel(kind,slug){
 async function build(){
   const name=$("#name").value.trim();
   if(!name){toast("Name the recipe.","err");return;}
-  if(!sel.llm.length){toast("Add at least one LLM.","err");return;}
+  if(!sel.llm.length && !sel.stt.length && !sel.embeddings.length){
+    toast("Add at least one model.","err");return;}
   const btn=$("#build"); btn.classList.add("busy"); btn.disabled=true;
   $("#log").textContent=""; $("#pill").textContent="building";
   const body={name, cuda_tag:$("#cuda").value, registry:$("#registry").value.trim(),

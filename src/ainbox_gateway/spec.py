@@ -127,14 +127,14 @@ def load_spec(data: dict) -> Spec:
     gateway = data.get("gateway")
     if not gateway or "port" not in gateway:
         raise SpecError("spec missing 'gateway.port'")
-    raw_llm = data.get("llm") or []
-    if not raw_llm:
-        raise SpecError("spec must declare at least one 'llm' node")
-    return Spec(
+    spec = Spec(
         gateway_port=gateway["port"],
-        llm=[_load_node(n) for n in raw_llm],
+        llm=[_load_node(n) for n in data.get("llm") or []],
         embeddings=[_load_embeddings(e) for e in data.get("embeddings", [])],
         stt=[_load_stt(s) for s in data.get("stt", [])],
         tts=[_load_tts(t) for t in data.get("tts", [])],
         images=[_load_images(i) for i in data.get("images", [])],
     )
+    if not (spec.llm or spec.embeddings or spec.stt or spec.tts or spec.images):
+        raise SpecError("spec must declare at least one model node")
+    return spec

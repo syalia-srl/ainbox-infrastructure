@@ -12,6 +12,14 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = ["pytest>=8.0", "pytest-asyncio>=0.23", "respx>=0.21", "asgi-lifespan>=2.1"]
+# Per-modality backend deps — the build installs only the extras a recipe uses,
+# so an LLM-only image carries no torch/diffusers/whisper/fastembed.
+stt = ["faster-whisper>=1.0.1"]
+embeddings = ["fastembed-gpu>=0.3"]
+tts = ["kokoro>=0.9", "torch>=2.3"]
+images = ["diffusers>=0.30", "torch>=2.3", "transformers>=4.44", "accelerate>=0.33",
+          "sentencepiece>=0.2", "protobuf>=4", "Pillow>=10"]
+# Union of all backends (everything) — kept for back-compat / full images.
 gpu = ["fastembed-gpu>=0.3", "faster-whisper>=1.0.1", "kokoro>=0.9",
        "diffusers>=0.30", "torch>=2.3", "transformers>=4.44", "accelerate>=0.33",
        "sentencepiece>=0.2", "protobuf>=4", "Pillow>=10"]

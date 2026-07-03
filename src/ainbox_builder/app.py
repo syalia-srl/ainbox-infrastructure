@@ -10,7 +10,7 @@ from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 
 from .builder import BuildBusy, BuildManager, build_command, disk_free_gb, docker_disk
-from .catalog import BASE_IMAGE_GB, CATALOG
+from .catalog import BASE_IMAGE_GB, CATALOG, DEP_GB
 from .recipe import RecipeError, render_recipe
 
 _STATIC = Path(__file__).parent / "static"
@@ -23,7 +23,8 @@ def create_app(repo_root: str, catalog: dict = CATALOG, spawn=None) -> FastAPI:
 
     @app.get("/api/catalog")
     async def get_catalog():
-        return JSONResponse({**catalog, "_meta": {"base_image_gb": BASE_IMAGE_GB}})
+        return JSONResponse({**catalog,
+                             "_meta": {"base_image_gb": BASE_IMAGE_GB, "dep_gb": DEP_GB}})
 
     @app.get("/api/disk")
     async def disk():
