@@ -58,11 +58,33 @@ EXTRAS="${EXTRAS#,}"
 
 echo "[FACTORY] llama=$WITH_LLAMA  extras='${EXTRAS:-<core-only>}'  cuda=$CUDA_TAG  runtime=$CUDA_RUNTIME_TAG"
 
+# Persistent builder cache: materialize the (expensive) llama.cpp build stage as
+# a tagged image. Unlike raw BuildKit cache, a tagged image survives
+# `docker builder prune`, so future builds reuse the compiled llama.cpp via
+# --cache-from instead of recompiling (~15-20 min). One image per CUDA base.
+BUILDER_IMG="superbot-builder:${CUDA_TAG}"
+CACHE_ARGS=()
+if [ "$WITH_LLAMA" = "1" ]; then
+    echo "[FACTORY] warming persistent builder image $BUILDER_IMG"
+    DOCKER_BUILDKIT=1 docker build --progress=plain \
+        --target builder \
+        --build-arg CUDA_TAG="$CUDA_TAG" \
+        --build-arg WITH_LLAMA=1 \
+        --build-arg BUILDKIT_INLINE_CACHE=1 \
+        --cache-from "$BUILDER_IMG" \
+        -t "$BUILDER_IMG" \
+        -f "$BUILD_DIR/Dockerfile" \
+        "$BUILD_DIR"
+    CACHE_ARGS=(--cache-from "$BUILDER_IMG")
+fi
+
 DOCKER_BUILDKIT=1 docker build --progress=plain \
+    "${CACHE_ARGS[@]}" \
     --build-arg CUDA_TAG="$CUDA_TAG" \
     --build-arg CUDA_RUNTIME_TAG="$CUDA_RUNTIME_TAG" \
     --build-arg WITH_LLAMA="$WITH_LLAMA" \
     --build-arg EXTRAS="$EXTRAS" \
+    --build-arg BUILDKIT_INLINE_CACHE=1 \
     -t "superbot:$IMAGE_TAG" \
     -f "$BUILD_DIR/Dockerfile" \
     "$BUILD_DIR"
