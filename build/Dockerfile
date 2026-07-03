@@ -5,10 +5,14 @@
 # the CUDA tags + WITH_LLAMA + EXTRAS from the recipe JSON and passes them here.
 # ============================================================================
 
-# ---- Stage 1: builder — compile llama.cpp (only when the recipe has an LLM) --
+# Global ARGs (must precede the first FROM to be usable in FROM lines).
 # CUDA_TAG default 12.2.2 keeps Ada/rtx4060 on their known-good floor; Blackwell
-# (sm_120 RTX 5090) hosts pass CUDA_TAG=12.8.1-devel-ubuntu22.04.
+# (sm_120 RTX 5090) hosts pass CUDA_TAG=12.8.1-devel-ubuntu22.04. build.sh derives
+# CUDA_RUNTIME_TAG (devel→runtime) and passes both.
 ARG CUDA_TAG=12.2.2-devel-ubuntu22.04
+ARG CUDA_RUNTIME_TAG=12.2.2-runtime-ubuntu22.04
+
+# ---- Stage 1: builder — compile llama.cpp (only when the recipe has an LLM) --
 FROM nvidia/cuda:${CUDA_TAG} AS builder
 
 ENV DEBIAN_FRONTEND=noninteractive
@@ -35,7 +39,6 @@ RUN mkdir -p /out/libs && \
     else echo "[BUILD] LLM-less recipe — skipping llama.cpp compile"; fi
 
 # ---- Stage 2: runtime — slim base, only the recipe's backends ---------------
-ARG CUDA_RUNTIME_TAG=12.2.2-runtime-ubuntu22.04
 FROM nvidia/cuda:${CUDA_RUNTIME_TAG} AS runtime
 
 ENV DEBIAN_FRONTEND=noninteractive
