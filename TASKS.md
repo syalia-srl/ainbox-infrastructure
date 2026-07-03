@@ -38,3 +38,12 @@ Everything is unit-tested against fakes; the real backends need a GPU host. Run 
 - Repo ships straight to `main` (AInBox suite convention).
 - Dev: `uv venv .venv && uv pip install '.[dev]'`; run `.venv/bin/python -m pytest`.
 - Local UI preview (fake backends, no GPU): `PYTHONPATH=src .venv/bin/python -m scripts.demo_ui` → http://127.0.0.1:8080
+
+## Deployed (2026-07-02) — engine.syalia.dev (CPU demo)
+
+Real minimal engine live at **https://engine.syalia.dev** (TLS via Caddy on demos).
+- Image `ainbox-engine:cpu-min` (1.1 GB, `Dockerfile.cpu`, static llama.cpp + faster-whisper), **built on demos** (fast net), not zion.
+- Raised: `qwen3.5-0.8b` (LLM, CPU) + `whisper-tiny` (STT). Spec: `deploy/cpu_min.json`.
+- Container: `--memory=1400m --memory-swap=2400m` (protects the ainbox prod stack), `--restart unless-stopped`, `127.0.0.1:8080`; demos has a 3 GB swapfile.
+- Redeploy: `rsync` repo → `demos:/tmp/engine-build`, `./build-cpu.sh recipes/cpu_min.json cpu-min`, `docker run … ainbox-engine:cpu-min`.
+- Working chat needs `"chat_template_kwargs":{"enable_thinking":false}` (0.8B is a verbose reasoner). TODO: add `disable_thinking` to the LLM raise-spec/argv so it's the default.
