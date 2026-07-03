@@ -20,7 +20,7 @@ WORKDIR /app
 # 3. Compile llama.cpp — CPU only (GGML_CUDA defaults OFF).
 RUN git clone --depth 1 https://github.com/ggerganov/llama.cpp.git && \
     cd llama.cpp && mkdir build && cd build && \
-    cmake .. -DGGML_NATIVE=OFF && \
+    cmake .. -DGGML_NATIVE=OFF -DBUILD_SHARED_LIBS=OFF && \
     cmake --build . --config Release -j"$(nproc)" --target llama-server && \
     cp bin/llama-server /app/ && \
     cd /app && rm -rf llama.cpp
