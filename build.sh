@@ -83,7 +83,11 @@ if [ "$WITH_LLAMA" = "1" ]; then
     BUILDER_CTX=(--build-context "builder=docker-image://$BUILDER_IMG")
 fi
 
+# --provenance/--sbom=false → a single-platform image manifest (not an OCI index
+# with an attestation sub-manifest), which the ainbox-fetch puller requires (it
+# reads .layers off a plain manifest, not a manifest list).
 DOCKER_BUILDKIT=1 docker build --progress=plain \
+    --provenance=false --sbom=false \
     "${BUILDER_CTX[@]}" \
     --build-arg CUDA_TAG="$CUDA_TAG" \
     --build-arg CUDA_RUNTIME_TAG="$CUDA_RUNTIME_TAG" \
