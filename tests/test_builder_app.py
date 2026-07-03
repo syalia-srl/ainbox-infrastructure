@@ -85,3 +85,22 @@ async def test_serves_page(tmp_path):
     async with _client(_app(tmp_path)) as c:
         r = await c.get("/")
         assert r.status_code == 200 and "Builder" in r.text
+
+
+async def _disk_spawn(argv, env, cwd):
+    return _FakeProc(["/tmp"], 0)
+
+
+@pytest.mark.asyncio
+async def test_catalog_has_base_meta(tmp_path):
+    async with _client(_app(tmp_path)) as c:
+        d = (await c.get("/api/catalog")).json()
+        assert d["_meta"]["base_image_gb"] > 0
+
+
+@pytest.mark.asyncio
+async def test_disk_reports_free_space(tmp_path):
+    app = create_app(repo_root=str(tmp_path), spawn=_disk_spawn)
+    async with _client(app) as c:
+        d = (await c.get("/api/disk")).json()
+        assert d["path"] == "/tmp" and d["free_gb"] > 0 and d["total_gb"] >= d["free_gb"]

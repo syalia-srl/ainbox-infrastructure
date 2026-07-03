@@ -3,7 +3,39 @@ from __future__ import annotations
 
 import asyncio
 import os
+import shutil
 from dataclasses import dataclass
+
+
+def parse_docker_root(out) -> str:
+    """Trim `docker info -f {{.DockerRootDir}}` output to the path string."""
+    if isinstance(out, (bytes, bytearray)):
+        out = out.decode(errors="replace")
+    return out.strip()
+
+
+def disk_free_gb(path: str) -> dict:
+    """Free/total/used (GB, 1-decimal) of the filesystem holding `path`.
+
+    `used` is `total - free` so the three numbers are self-consistent for a
+    readout (ignores root-reserved blocks).
+    """
+    u = shutil.disk_usage(path)
+    gb = 1024 ** 3
+    return {"path": path,
+            "free_gb": round(u.free / gb, 1),
+            "total_gb": round(u.total / gb, 1),
+            "used_gb": round((u.total - u.free) / gb, 1)}
+
+
+async def docker_disk(spawn) -> dict:
+    """Where Docker writes images, and how much room is left there."""
+    proc = await spawn(["docker", "info", "-f", "{{.DockerRootDir}}"], None, None)
+    out = b""
+    async for line in proc.stdout:
+        out += line
+    await proc.wait()
+    return disk_free_gb(parse_docker_root(out) or "/")
 
 
 @dataclass

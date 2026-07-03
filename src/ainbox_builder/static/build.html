@@ -106,6 +106,12 @@
   #toast.err { border-color:var(--err); color:#fecaca; }
   #toast.ok  { border-color:var(--ok); color:#bbf7d0; }
 
+  .disk { font-family:var(--font-mono); font-size:11px; color:var(--text-dim);
+          text-align:right; line-height:1.35; white-space:nowrap; }
+  .disk b { color:var(--text); font-weight:700; }
+  .disk.tight b { color:var(--err); }
+  .disk.tight { color:var(--err); }
+
   :focus-visible { outline:2px solid var(--accent-hi); outline-offset:2px; }
   @media (prefers-reduced-motion:reduce){ *{animation:none !important; transition:none !important;} }
 </style>
@@ -123,6 +129,7 @@
   <input id="registry" class="pick" value="registry.syalia.dev" style="max-width:190px"/>
   <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text-dim)">
     <span class="toggle on" id="push" role="switch" aria-checked="true"></span>push</label>
+  <span id="disk" class="disk" title="free disk on the build host vs. estimated image size"></span>
   <button class="relaunch dirty" id="build"><span class="material-icons">build</span>
     <span id="blabel">Build</span></button>
 </header>
@@ -141,15 +148,43 @@ const CUDA = {"Blackwell (5090)":"12.8.1-devel-ubuntu22.04", "Ada (4060)":"12.2.
 const $ = s => document.querySelector(s);
 let CATALOG = {llm:{},stt:{},embeddings:{}};
 let sel = {llm:[], stt:[], embeddings:[]};
+let BASE_GB = 12, DISK = null;
+const UNKNOWN_LLM_GB = 6.0;
 
 (async function boot(){
   CATALOG = await (await fetch("/api/catalog")).json();
+  BASE_GB = CATALOG._meta?.base_image_gb ?? 12;
   const cu = $("#cuda"); Object.entries(CUDA).forEach(([k,v])=>{
     const o=document.createElement("option"); o.value=v; o.textContent=k; cu.appendChild(o);});
   $("#push").onclick = () => { const t=$("#push"); const on=!t.classList.contains("on");
     t.classList.toggle("on",on); t.setAttribute("aria-checked",on); };
+  await refreshDisk();
   render();
 })();
+
+function estimate(){
+  let gb = BASE_GB;
+  for(const k of ["llm","stt","embeddings"]) for(const m of sel[k]){
+    const e = CATALOG[k]?.[m.alias];
+    gb += (e && e.gb!=null) ? e.gb : (k==="llm" ? UNKNOWN_LLM_GB : 0);
+  }
+  return Math.round(gb*10)/10;
+}
+async function refreshDisk(){
+  try { DISK = await (await fetch("/api/disk")).json(); }
+  catch(e){ DISK = null; }
+  updateReadout();
+}
+function updateReadout(){
+  const el=$("#disk"); if(!el) return;
+  const est=estimate(), free=DISK?DISK.free_gb:null;
+  const tight = free!=null && est>free;
+  el.className = "disk"+(tight?" tight":"");
+  el.innerHTML = (free!=null ? `💽 <b>${free}</b> GB free` : "💽 disk —")
+    + ` · ~<b>${est}</b> GB image`;
+  el.title = DISK ? `${DISK.free_gb} GB free of ${DISK.total_gb} GB on ${DISK.path} · est. image ~${est} GB`
+                  : `estimated image ~${est} GB`;
+}
 
 function render(){
   const board=$("#board"); board.innerHTML="";
@@ -165,6 +200,7 @@ function render(){
     else sel[kind].forEach((m,i)=>mods.appendChild(card(kind,m,i)));
     rail.appendChild(mods); board.appendChild(rail);
   }
+  updateReadout();
 }
 function card(kind,m,i){
   const el=document.createElement("div"); el.className="module";
@@ -221,7 +257,7 @@ async function build(){
     const st=await (await fetch(`/api/build/${data.build_id}`)).json();
     $("#pill").textContent=st.status; toast(st.status==="done"?"Done.":"Failed.",
       st.status==="done"?"ok":"err");
-    btn.classList.remove("busy"); btn.disabled=false; };
+    btn.classList.remove("busy"); btn.disabled=false; refreshDisk(); };
 }
 function toast(msg,kind){ const t=$("#toast"); t.textContent=msg; t.className="show "+(kind||"");
   clearTimeout(toast._t); toast._t=setTimeout(()=>t.className="",2600); }
