@@ -47,3 +47,6 @@ Real minimal engine live at **https://engine.syalia.dev** (TLS via Caddy on demo
 - Container: `--memory=1400m --memory-swap=2400m` (protects the ainbox prod stack), `--restart unless-stopped`, `127.0.0.1:8080`; demos has a 3 GB swapfile.
 - Redeploy: `rsync` repo → `demos:/tmp/engine-build`, `./build-cpu.sh recipes/cpu_min.json cpu-min`, `docker run … ainbox-engine:cpu-min`.
 - Working chat needs `"chat_template_kwargs":{"enable_thinking":false}` (0.8B is a verbose reasoner). TODO: add `disable_thinking` to the LLM raise-spec/argv so it's the default.
+
+## Gateway web UI — observability gaps (flagged 2026-07-06, smaug GenSIE run)
+- [ ] UI has issues to fix (deferred). Alex wants a live status view: which models/replicas are up, per-GPU VRAM usage, utilization — an `nvidia-smi`-like panel in the loadout board. Currently the UI at :8080 doesn't surface live GPU/replica state. Add a status endpoint (gateway → nvidia-smi/NVML + supervisor pool state) + a UI panel.
